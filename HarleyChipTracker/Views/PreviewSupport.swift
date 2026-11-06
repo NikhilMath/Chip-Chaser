@@ -1,6 +1,8 @@
-#if DEBUG
 import SwiftData
 import SwiftUI
+
+// Sample data for SwiftUI previews and the debug-only `-demoData` launch argument.
+// Not wrapped in `#if DEBUG`: `#Preview` blocks are compiled in Release too, so they need these symbols.
 
 extension ModelContainer {
     /// An in-memory store with a handful of collected chips, for SwiftUI previews.
@@ -40,4 +42,3 @@ extension Dealer {
         longitude: -87.9604
     )
 }
-#endif
