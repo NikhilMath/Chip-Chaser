@@ -18,9 +18,22 @@ An iPhone app for Harley-Davidson chip collectors. Every Harley-Davidson dealers
 - **Trading.** Track how many of each chip you own. Share your *missing list* or *extras for trade* as text to a collector group.
 - **Your own stores.** Add a dealer that's new, closed, or overseas; it counts like any other.
 - **Choose what counts.** Turn Canadian locations, satellite stores or apparel shops on or off in Settings.
-- **Backup.** Export your collection as a JSON file (Files, AirDrop) and import it on a new phone.
+- **Saved to your Apple ID.** Your collection syncs through your own iCloud account to every iPhone signed in with the same Apple ID. There's no separate sign-in; Settings shows whether iCloud is on.
+- **Backup.** Export your collection as a JSON file (Files, AirDrop) and import it on any phone.
 
-Data stays on the device (SwiftData). The models are CloudKit-compatible, so iCloud sync can be turned on later by adding the iCloud capability.
+## iCloud sync
+
+The SwiftData store mirrors to the private CloudKit database in `iCloud.com.nikhilmath.HarleyChipTracker` (see `HarleyChipTracker/Services/CloudSync.swift`). Each collector's data lives in their own iCloud account; the developer can't read it. Without an iCloud account the app keeps working locally and syncs once the person signs in.
+
+CloudKit can't enforce one record per dealer, so the app merges duplicates (the same chip marked on two devices before they sync) whenever iCloud changes arrive.
+
+**When the models change:** TestFlight and App Store builds use CloudKit's *production* environment, which only gets new record types or fields when you deploy them.
+
+1. Bump `CloudSync.schemaVersion`, then run a Debug build on a device signed in to iCloud. It pushes the schema to the *development* environment on first launch (or pass `-initCloudKitSchema YES`).
+2. In [CloudKit Console](https://icloud.developer.apple.com/dashboard), open the container and choose **Deploy Schema Changes** to production.
+3. Then archive and upload the build.
+
+Only add fields; never rename or delete one that has shipped.
 
 ## Running it
 
@@ -55,10 +68,11 @@ HarleyChipTracker/
   App/          App entry point and AppModel (tracking settings, location)
   Models/       Dealer, ChipRecord / CustomDealer (SwiftData), region names
   Data/         Bundled directory loader, collection status, backup, share text
-  Services/     One-shot location provider
+  Services/     One-shot location provider, iCloud sync and account status
   Views/        Dealers, Map, Progress, Settings, detail and add-store screens
   Resources/    dealers.json
 HarleyChipTrackerTests/   Swift Testing suite
+Config/         Entitlements (iCloud, push) and Info.plist additions (background sync)
 Tools/          update_dealers.py, make_icon.swift (renders the app icon)
 ```
 

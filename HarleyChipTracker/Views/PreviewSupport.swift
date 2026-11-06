@@ -10,7 +10,7 @@ extension ModelContainer {
         do {
             let container = try ModelContainer(
                 for: ChipRecord.self, CustomDealer.self,
-                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
             )
             let dealers = DealerDirectory.shared.dealers
             for (offset, dealer) in dealers.enumerated() where offset.isMultiple(of: 7) {

@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct HarleyChipTrackerApp: App {
     @State private var model = AppModel()
+    @State private var cloudAccount = CloudAccount()
     private let container: ModelContainer
 
     init() {
@@ -14,6 +15,8 @@ struct HarleyChipTrackerApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
+                .environment(cloudAccount)
+                .cloudSyncMaintenance(account: cloudAccount)
         }
         .modelContainer(container)
     }
@@ -22,12 +25,11 @@ struct HarleyChipTrackerApp: App {
         #if DEBUG
         // `-demoData YES` runs against an in-memory sample collection (screenshots, demos).
         if DebugLaunch.demoData { return .preview }
+        // Pushes the model to CloudKit's development environment once (or on `-initCloudKitSchema YES`).
+        let forceSchema = DebugLaunch.initCloudKitSchema
+        Task.detached(priority: .utility) { CloudSync.initializeSchemaIfNeeded(force: forceSchema) }
         #endif
-        do {
-            return try ModelContainer(for: ChipRecord.self, CustomDealer.self)
-        } catch {
-            fatalError("Could not open the collection store: \(error)")
-        }
+        return CloudSync.makeContainer()
     }
 }
 
@@ -35,6 +37,7 @@ struct HarleyChipTrackerApp: App {
 /// Debug-only launch arguments, e.g. `-demoData YES -debugTab progress -debugDealer hd-1069`.
 enum DebugLaunch {
     static var demoData: Bool { UserDefaults.standard.bool(forKey: "demoData") }
+    static var initCloudKitSchema: Bool { UserDefaults.standard.bool(forKey: "initCloudKitSchema") }
     static var tab: AppTab? { UserDefaults.standard.string(forKey: "debugTab").flatMap(AppTab.init(rawValue:)) }
     static var dealerID: String? { UserDefaults.standard.string(forKey: "debugDealer") }
 }

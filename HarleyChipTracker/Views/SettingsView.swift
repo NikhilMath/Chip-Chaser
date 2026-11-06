@@ -2,9 +2,10 @@ import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// What to track, backup/restore, and about.
+/// What to track, iCloud status, backup/restore, and about.
 struct SettingsView: View {
     @Environment(AppModel.self) private var app
+    @Environment(CloudAccount.self) private var cloudAccount
     @Environment(\.modelContext) private var context
     @Query private var records: [ChipRecord]
     @Query(sort: \CustomDealer.createdAt) private var customDealers: [CustomDealer]
@@ -37,6 +38,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    LabeledContent {
+                        Text(cloudAccount.status.title)
+                    } label: {
+                        Label("iCloud Sync", systemImage: cloudAccount.status.symbol)
+                    }
+                } header: {
+                    Text("Your Apple ID")
+                } footer: {
+                    Text(cloudAccount.status.explanation)
+                }
+
+                Section {
                     ShareLink(item: CollectionBackup(records: records, customDealers: customDealers),
                               preview: SharePreview("Harley Chip Tracker Backup", image: Image(systemName: "doc.text"))) {
                         Label("Export Backup", systemImage: "square.and.arrow.up")
@@ -49,7 +62,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("Your collection is stored on this iPhone. Export a backup to Files or AirDrop it to keep it safe or move it to a new phone.")
+                    Text("An extra copy you control. Export a backup to Files, or AirDrop it to a friend's phone or to a phone on a different Apple ID.")
                 }
 
                 Section {
@@ -77,7 +90,7 @@ struct SettingsView: View {
             .confirmationDialog("Reset your collection?", isPresented: $confirmingReset, titleVisibility: .visible) {
                 Button("Erase All Chips and Stores", role: .destructive, action: reset)
             } message: {
-                Text("This deletes every chip you've marked, your notes, and stores you added. Export a backup first if you might want them back.")
+                Text("This deletes every chip you've marked, your notes, and stores you added, on this iPhone and in iCloud. Export a backup first if you might want them back.")
             }
             .alert(message?.title ?? "", isPresented: Binding(
                 get: { message != nil },
@@ -133,5 +146,6 @@ extension Bundle {
 #Preview {
     SettingsView()
         .environment(AppModel())
+        .environment(CloudAccount())
         .modelContainer(.preview)
 }

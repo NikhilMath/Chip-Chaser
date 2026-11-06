@@ -35,5 +35,6 @@ enum AppTab: String {
 #Preview {
     RootView()
         .environment(AppModel())
+        .environment(CloudAccount())
         .modelContainer(.preview)
 }

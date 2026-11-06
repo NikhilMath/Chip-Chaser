@@ -11,7 +11,7 @@ struct CollectionTests {
     init() throws {
         container = try ModelContainer(
             for: ChipRecord.self, CustomDealer.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 
@@ -83,7 +83,7 @@ struct CollectionTests {
 
         // Restore into a fresh store.
         let other = try ModelContainer(for: ChipRecord.self, CustomDealer.self,
-                                       configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+                                       configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let decoded = try CollectionBackup.decoder.decode(CollectionBackup.self, from: data)
         let restored = try decoded.restore(into: other.mainContext)
         #expect(restored == 2)
@@ -99,6 +99,52 @@ struct CollectionTests {
         try decoded.restore(into: other.mainContext)
         #expect(try other.mainContext.fetch(FetchDescriptor<CustomDealer>()).count == 1)
         #expect(try other.mainContext.fetch(FetchDescriptor<ChipRecord>()).count == 2)
+    }
+
+    @Test func mergeFoldsSyncedDuplicates() throws {
+        // The same chip marked on two devices before they synced.
+        let early = Date(timeIntervalSince1970: 1_700_000_000)
+        context.insert(ChipRecord(dealerID: "hd-5", quantity: 1, collectedAt: .now, notes: "from iPhone"))
+        context.insert(ChipRecord(dealerID: "hd-5", quantity: 3, collectedAt: early, notes: "from iPad"))
+        context.insert(ChipRecord(dealerID: "hd-5", quantity: 2, collectedAt: .now, notes: "from iPad"))
+        context.insert(ChipRecord(dealerID: "hd-6", quantity: 1))
+        let store = CustomDealer(name: "Pop-Up", city: "Sturgis", region: "SD", country: "US")
+        let copy = CustomDealer(name: "Pop-Up", city: "Sturgis", region: "SD", country: "US")
+        copy.identifier = store.identifier
+        context.insert(store)
+        context.insert(copy)
+
+        #expect(try context.mergeDuplicates() == 3)
+
+        let merged = try records().filter { $0.dealerID == "hd-5" }
+        #expect(merged.count == 1)
+        let record = try #require(merged.first)
+        #expect(record.quantity == 3, "keeps the highest count")
+        #expect(record.collectedAt == early, "keeps the earliest date")
+        #expect(record.notes.contains("from iPhone") && record.notes.contains("from iPad"))
+        #expect(record.notes.components(separatedBy: "from iPad").count == 2, "identical notes appear once")
+        #expect(try records().count == 2)
+        #expect(try context.fetch(FetchDescriptor<CustomDealer>()).count == 1)
+
+        #expect(try context.mergeDuplicates() == 0, "nothing left to merge")
+    }
+
+    @Test func mergeKeepsTheSameSurvivorEverywhere() throws {
+        // Two devices merging the same pair must keep the same row, or both copies get deleted.
+        let a = ChipRecord(dealerID: "hd-7", quantity: 1)
+        let b = ChipRecord(dealerID: "hd-7", quantity: 1)
+        let expected = min(a.rowID.uuidString, b.rowID.uuidString)
+        context.insert(b)
+        context.insert(a)
+        try context.mergeDuplicates()
+        #expect(try records().map(\.rowID.uuidString) == [expected])
+    }
+
+    @Test func unmarkingClearsEveryCopy() throws {
+        context.insert(ChipRecord(dealerID: "hd-8", quantity: 1, collectedAt: .now))
+        context.insert(ChipRecord(dealerID: "hd-8", quantity: 2, collectedAt: .now))
+        context.setCollected(false, dealerID: "hd-8")
+        #expect(try records().isEmpty)
     }
 
     @Test func resetClearsEverything() throws {
