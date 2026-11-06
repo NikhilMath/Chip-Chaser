@@ -43,6 +43,7 @@ struct AddDealerView: View {
                     Toggle("I already have this chip", isOn: $alreadyCollected)
                 }
             }
+            .toggleStyle(SwitchToggleStyle(tint: Color.accentColor))
             .navigationTitle("Add Store")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

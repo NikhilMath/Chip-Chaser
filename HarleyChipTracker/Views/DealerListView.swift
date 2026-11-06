@@ -34,6 +34,7 @@ struct DealerListView: View {
     @State private var filter: ChipFilter = .all
     @State private var sort: DealerSort = .region
     @State private var showingAddStore = false
+    @State private var path: [Dealer] = []
 
     var body: some View {
         let status = CollectionStatus(records: records)
@@ -42,7 +43,7 @@ struct DealerListView: View {
             filter.includes(collected: status.isCollected($0.id)) && $0.matches(search: searchText)
         }
 
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section {
                     Picker("Show", selection: $filter) {
@@ -91,6 +92,13 @@ struct DealerListView: View {
             .task(id: sort) {
                 if sort == .nearest { app.location.refresh() }
             }
+            #if DEBUG
+            .onAppear {
+                if path.isEmpty, let id = DebugLaunch.dealerID, let dealer = app.dealer(id: id, custom: customDealers) {
+                    path = [dealer]
+                }
+            }
+            #endif
         }
     }
 

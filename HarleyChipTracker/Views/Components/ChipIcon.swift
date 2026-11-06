@@ -4,6 +4,8 @@ import SwiftUI
 struct ChipIcon: View {
     var collected: Bool
     var size: CGFloat = 36
+    /// Solid colors so missing chips stay visible on top of a map.
+    var opaque = false
 
     var body: some View {
         let rim = size * 0.16
@@ -12,14 +14,14 @@ struct ChipIcon: View {
 
         ZStack {
             Circle()
-                .fill(collected ? Color.accentColor : Color(.secondarySystemFill))
+                .fill(collected ? Color.accentColor : (opaque ? Color(.systemGray2) : Color(.secondarySystemFill)))
             Circle()
                 .strokeBorder(
-                    collected ? Color.white.opacity(0.92) : Color(.tertiaryLabel),
+                    collected || opaque ? Color.white.opacity(0.92) : Color(.tertiaryLabel),
                     style: StrokeStyle(lineWidth: rim, dash: [segment, segment], dashPhase: segment / 2)
                 )
             Circle()
-                .fill(collected ? Color.black.opacity(0.88) : Color(.systemBackground))
+                .fill(collected ? Color.black.opacity(0.88) : (opaque ? Color(.systemGray5) : Color(.systemBackground)))
                 .padding(size * 0.25)
             if collected {
                 Image(systemName: "checkmark")

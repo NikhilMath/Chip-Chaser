@@ -86,6 +86,7 @@ struct DealerDetailView: View {
                 }
             }
         }
+        .toggleStyle(SwitchToggleStyle(tint: Color.accentColor))
         .navigationTitle(dealer.name)
         .navigationBarTitleDisplayMode(.inline)
         .sensoryFeedback(.success, trigger: collected) { _, isCollected in isCollected }
@@ -99,9 +100,17 @@ struct DealerDetailView: View {
     private var header: some View {
         Section {
             VStack(spacing: 10) {
-                ChipIcon(collected: collected, size: 104)
-                    .shadow(color: .black.opacity(collected ? 0.25 : 0), radius: 8, y: 4)
-                    .animation(.snappy, value: collected)
+                Button {
+                    withAnimation(.snappy) { context.setCollected(!collected, dealerID: dealer.id) }
+                } label: {
+                    ChipIcon(collected: collected, size: 104)
+                        .shadow(color: .black.opacity(collected ? 0.25 : 0), radius: 8, y: 4)
+                        .scaleEffect(collected ? 1 : 0.94)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(collected ? "Collected" : "Missing")
+                .accessibilityHint("Double-tap to toggle")
                 Text(dealer.name)
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
@@ -113,6 +122,10 @@ struct DealerDetailView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(.quaternary, in: Capsule())
+                Text(collected ? "Tap the chip to mark it missing" : "Tap the chip when you get it")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
