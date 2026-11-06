@@ -51,6 +51,16 @@ xcodebuild test -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker -
 
 Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab map|progress|settings` and `-debugDealer <id>` launch arguments for screenshots.
 
+## Releasing to TestFlight
+
+```bash
+Tools/release.sh
+```
+
+The script only runs when everything is committed and on `origin/main`. It bumps the build number, archives, uploads with `Config/ExportOptions.plist`, then commits and pushes the bump, so every TestFlight build matches a commit on GitHub. When processing finishes, add the build to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
+
+Working with Claude Code in this repo, a Stop hook (`.claude/hooks/require-pushed.sh`) won't let a turn end while changes are uncommitted or commits aren't on `origin/main`.
+
 ## Updating the dealer list
 
 Dealers open, close and get renamed. To refresh the bundled list:
@@ -72,8 +82,8 @@ HarleyChipTracker/
   Views/        Dealers, Map, Progress, Settings, detail and add-store screens
   Resources/    dealers.json
 HarleyChipTrackerTests/   Swift Testing suite
-Config/         Entitlements (iCloud, push) and Info.plist additions (background sync)
-Tools/          update_dealers.py, make_icon.swift (renders the app icon)
+Config/         Entitlements (iCloud, push), Info.plist additions, TestFlight export options
+Tools/          update_dealers.py, make_icon.swift (app icon), release.sh (TestFlight upload)
 ```
 
 ## Disclaimer
