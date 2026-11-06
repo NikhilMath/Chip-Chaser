@@ -45,9 +45,12 @@ extension ModelContext {
     }
 
     /// Deletes every chip record and hand-added store.
+    ///
+    /// Deletes object by object rather than with `delete(model:)`: the batch delete only
+    /// hits what's already saved, so a chip marked a moment ago (not yet autosaved) would survive.
     func resetCollection() throws {
-        try delete(model: ChipRecord.self)
-        try delete(model: CustomDealer.self)
+        for record in try fetch(FetchDescriptor<ChipRecord>()) { delete(record) }
+        for store in try fetch(FetchDescriptor<CustomDealer>()) { delete(store) }
         try save()
     }
 }
