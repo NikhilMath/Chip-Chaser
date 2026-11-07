@@ -69,7 +69,7 @@ Releases happen on GitHub. Every push to `main` that changes the app (`HarleyChi
 2. archives the app with that build number, using an App Store Connect API key so Xcode can handle signing in the cloud;
 3. checks that the iCloud entitlement made it into the archive;
 4. uploads the build to App Store Connect;
-5. tags the commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Harley-Chip-Tracker/releases) listing the commits since the last build (`Tools/github-release.sh`).
+5. tags the commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Chip-Chaser/releases) listing the commits since the last build (`Tools/github-release.sh`).
 
 Changes to docs, tests and tools don't trigger a build. To release by hand, open **Actions → Release → Run workflow**, or run `gh workflow run release.yml`. When Apple finishes processing a build, add it to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
 
