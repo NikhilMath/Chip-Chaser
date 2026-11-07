@@ -9,11 +9,15 @@ Chip Chaser is an iPhone app for Harley-Davidson chip collectors (it started out
   <img src="docs/screenshots/detail.png" width="200" alt="Dealer detail with chip count">
 </p>
 
-On iPhone Duo, iOS moves the tab bar to a rail along the right edge; no layout changes were needed:
+On iPhone Duo's outer screen (folded), iOS moves the tab bar to a rail along the right edge; no layout changes were needed:
 
 <img src="docs/appstore/duo/preview.png" alt="Dealers, Map, Progress and dealer detail on iPhone Duo, with the tab bar as a rail on the right">
 
-Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/), next to the App Store screenshots in [`docs/appstore/`](docs/appstore/).
+Unfolded, the app fills the big inner screen in landscape, with the same rail on the right:
+
+<img src="docs/appstore/duo-unfolded/preview.png" alt="Dealers, Map, Progress and dealer detail on the unfolded iPhone Duo's inner screen, in landscape">
+
+Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (folded) and [`docs/appstore/duo-unfolded/`](docs/appstore/duo-unfolded/), next to the App Store screenshots in [`docs/appstore/`](docs/appstore/).
 
 ## Features
 
