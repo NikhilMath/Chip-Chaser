@@ -1,19 +1,21 @@
 #!/bin/zsh
-# Uploads a new build to App Store Connect (TestFlight).
+# Uploads a build to App Store Connect from this Mac and publishes its GitHub Release.
 #
 #   Tools/release.sh
 #
-# Refuses to run unless everything is committed and on origin/main, bumps the
-# build number, archives, uploads, then commits and pushes the bump and publishes
-# a GitHub Release for it (Tools/github-release.sh). Changed the SwiftData
-# models? Deploy the CloudKit schema to production first (see README).
+# Normally GitHub does this on every push that changes the app
+# (.github/workflows/release.yml); this is the fallback for when that can't run.
+# Refuses to run unless everything is committed and on origin/main. The build
+# number comes from the release tags (Tools/next-build-number.sh) and is passed
+# to xcodebuild, so nothing gets committed. Changed the SwiftData models?
+# Deploy the CloudKit schema to production first (see README).
 set -euo pipefail
 cd "${0:A:h}/.."
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
 
-git fetch -q origin
+git fetch -q origin --tags
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Commit your changes first; only pushed work gets released." >&2; exit 1
 fi
@@ -21,33 +23,23 @@ if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
   echo "HEAD isn't origin/main. Push (git push origin HEAD:main) or pull first." >&2; exit 1
 fi
 
-project=HarleyChipTracker.xcodeproj/project.pbxproj
-current=$(grep -m1 -o 'CURRENT_PROJECT_VERSION = [0-9]*' "$project" | grep -o '[0-9]*$')
-next=$((current + 1))
-sed -i '' "s/CURRENT_PROJECT_VERSION = $current;/CURRENT_PROJECT_VERSION = $next;/g" "$project"
-echo "Build $current → $next"
+build=$(Tools/next-build-number.sh)
+echo "Uploading build $build"
 
 # Outside ~/Documents: iCloud Drive can tag build products with Finder metadata
 # that breaks code signing.
 work=$(mktemp -d -t harley-release)
 trap 'rm -rf "$work"' EXIT
-if ! xcodebuild archive -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker \
-      -configuration Release -destination 'generic/platform=iOS' \
-      -archivePath "$work/HarleyChipTracker.xcarchive" -derivedDataPath "$work/DerivedData" \
-      -allowProvisioningUpdates -quiet \
-   || ! xcodebuild -exportArchive -archivePath "$work/HarleyChipTracker.xcarchive" \
-      -exportOptionsPlist Config/ExportOptions.plist -exportPath "$work/export" \
-      -allowProvisioningUpdates; then
-  git checkout -- "$project"
-  echo "Release failed; build number left at $current." >&2; exit 1
-fi
+xcodebuild archive -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker \
+  -configuration Release -destination 'generic/platform=iOS' \
+  -archivePath "$work/HarleyChipTracker.xcarchive" -derivedDataPath "$work/DerivedData" \
+  -allowProvisioningUpdates -quiet CURRENT_PROJECT_VERSION="$build"
+xcodebuild -exportArchive -archivePath "$work/HarleyChipTracker.xcarchive" \
+  -exportOptionsPlist Config/ExportOptions.plist -exportPath "$work/export" \
+  -allowProvisioningUpdates
 
-git commit -q -m "Upload build $next to TestFlight" -- "$project"
-git push -q origin HEAD:main
-echo "Uploaded build $next and pushed the bump."
-
-if ! Tools/github-release.sh HEAD; then
-  echo "The upload worked, but the GitHub Release didn't. Retry with: Tools/github-release.sh HEAD" >&2
+if ! Tools/github-release.sh "$build" HEAD; then
+  echo "Build $build uploaded, but the GitHub Release didn't work. Retry with: Tools/github-release.sh $build HEAD" >&2
   exit 1
 fi
-echo "Published the GitHub Release. Add the build to a TestFlight group in App Store Connect once it finishes processing."
+echo "Uploaded build $build and published its GitHub Release. Add it to a TestFlight group in App Store Connect once it finishes processing."

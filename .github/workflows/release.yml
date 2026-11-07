@@ -1,0 +1,108 @@
+# Builds the app and uploads it to App Store Connect (TestFlight) whenever a
+# push to main changes the app, then tags the commit v<version>-build<N> and
+# publishes a GitHub Release. Run it by hand from the Actions tab too.
+#
+# Needs three repository secrets from an App Store Connect API key (Admin role,
+# so Xcode can manage signing in the cloud): ASC_KEY_ID, ASC_ISSUER_ID and
+# ASC_KEY_P8 (the contents of the AuthKey_XXXX.p8 file). See README → Releasing.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'HarleyChipTracker/**'
+      - 'Config/**'
+      - 'HarleyChipTracker.xcodeproj/**'
+  workflow_dispatch:
+
+# One release at a time, so build numbers never collide.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: xcode-27
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+      HAS_KEY: ${{ secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
+      ARCHIVE: ${{ github.workspace }}/../build/HarleyChipTracker.xcarchive
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # release tags decide the build number
+
+      - name: Pick the build number
+        id: build
+        run: |
+          xcodebuild -version
+          echo "number=$(Tools/next-build-number.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Compile only (no App Store Connect key yet)
+        if: env.HAS_KEY != 'true'
+        run: |
+          xcodebuild archive -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE" CODE_SIGNING_ALLOWED=NO -quiet
+          echo "::error title=No App Store Connect key::The app compiles, but nothing was uploaded. Add the ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 repository secrets (README → Releasing), then re-run this workflow."
+          exit 1
+
+      - name: Install the App Store Connect key
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$key"
+          chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+
+      - name: Archive build ${{ steps.build.outputs.number }}
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild archive -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE" -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION="${{ steps.build.outputs.number }}" -quiet
+
+      - name: Check the iCloud entitlements made it in
+        if: env.HAS_KEY == 'true'
+        run: |
+          codesign -d --entitlements - --xml "$ARCHIVE/Products/Applications/HarleyChipTracker.app" > "$RUNNER_TEMP/entitlements.plist"
+          grep -q 'iCloud.com.nikhilmath.HarleyChipTracker' "$RUNNER_TEMP/entitlements.plist" \
+            || { echo "::error::The archive is missing the iCloud container entitlement; not uploading."; exit 1; }
+
+      - name: Upload to App Store Connect
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive -archivePath "$ARCHIVE" \
+            -exportOptionsPlist Config/ExportOptions.plist -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Publish the GitHub Release
+        if: env.HAS_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          Tools/github-release.sh "${{ steps.build.outputs.number }}" "$GITHUB_SHA"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"

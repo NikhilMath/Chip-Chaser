@@ -27,10 +27,19 @@ if [ ${#problems[@]} -gt 0 ]; then
 fi
 
 # Everything is pushed. Did the app itself change since the last uploaded build?
+git fetch -q origin --tags 2>/dev/null
 released=$(git describe --tags --abbrev=0 --match 'v*-build*' HEAD 2>/dev/null) || exit 0
 app_files=$(git diff --name-only "$released" HEAD -- HarleyChipTracker Config HarleyChipTracker.xcodeproj | wc -l | tr -d ' ')
-if [ "$app_files" -gt 0 ]; then
-  jq -n --arg r "$app_files app file(s) changed since $released, the last uploaded build. Run Tools/release.sh (with DEVELOPER_DIR set) to upload a new build and publish its GitHub Release before finishing, unless the user asked to hold off or the change isn't ready to ship." \
-    '{decision: "block", reason: $r}'
+[ "$app_files" -gt 0 ] || exit 0
+
+if [ -f .github/workflows/release.yml ]; then
+  # GitHub uploads and releases on push. Only speak up if its latest run failed.
+  last=$(gh run list --workflow release.yml --branch main --limit 1 --json conclusion,url \
+    --jq '.[0] | select(.conclusion == "failure") | .url' 2>/dev/null)
+  [ -n "$last" ] || exit 0
+  reason="$app_files app file(s) changed since $released, and the GitHub release workflow failed ($last). Check it with gh run view --log-failed, fix it and re-run (gh workflow run release.yml), or upload from this Mac with Tools/release.sh. Say so if it can't be fixed now, unless the user asked to hold off."
+else
+  reason="$app_files app file(s) changed since $released, the last uploaded build. Run Tools/release.sh (with DEVELOPER_DIR set) to upload a new build and publish its GitHub Release before finishing, unless the user asked to hold off or the change isn't ready to ship."
 fi
+jq -n --arg r "$reason" '{decision: "block", reason: $r}'
 exit 0
