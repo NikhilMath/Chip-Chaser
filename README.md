@@ -59,19 +59,43 @@ Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab ma
 
 ## Releasing to TestFlight
 
+Releases happen on GitHub. Every push to `main` that changes the app (`HarleyChipTracker/`, `Config/` or the Xcode project) runs the [Release workflow](.github/workflows/release.yml) on GitHub's Xcode 27 runner. It:
+
+1. picks the next build number: one more than the highest `v*-build<N>` tag (`Tools/next-build-number.sh`);
+2. archives the app with that build number, using an App Store Connect API key so Xcode can handle signing in the cloud;
+3. checks that the iCloud entitlement made it into the archive;
+4. uploads the build to App Store Connect;
+5. tags the commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Harley-Chip-Tracker/releases) listing the commits since the last build (`Tools/github-release.sh`).
+
+Changes to docs, tests and tools don't trigger a build. To release by hand, open **Actions → Release → Run workflow**, or run `gh workflow run release.yml`. When Apple finishes processing a build, add it to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
+
+After a version is live on the App Store, Apple won't take new builds for it. Raise `MARKETING_VERSION` (say, to 1.1) before the next release. The build number in the project file stays put; the tags are the record.
+
+### The App Store Connect key
+
+The workflow needs three repository secrets. Until they're set, it only checks that the app compiles.
+
+1. In [App Store Connect → Users and Access → Integrations](https://appstoreconnect.apple.com/access/integrations/api), generate a **Team Key** with the **Admin** role. Admin is what lets Xcode create signing certificates and profiles on GitHub's machines.
+2. Download the `AuthKey_XXXXXXXXXX.p8` file. Apple only lets you download it once.
+3. Add the secrets:
+
+   ```bash
+   gh secret set ASC_KEY_ID --body XXXXXXXXXX
+   gh secret set ASC_ISSUER_ID --body 00000000-0000-0000-0000-000000000000
+   gh secret set ASC_KEY_P8 < ~/Downloads/AuthKey_XXXXXXXXXX.p8
+   ```
+
+The Key ID is shown next to the key, and the Issuer ID is at the top of that page.
+
+### From this Mac
+
 ```bash
 Tools/release.sh
 ```
 
-The script only runs when everything is committed and on `origin/main`. It bumps the build number, archives, uploads with `Config/ExportOptions.plist`, then commits and pushes the bump.
+This is the fallback when GitHub can't run. It does the same thing using the Apple account signed in to Xcode: it only runs when everything is committed and on `origin/main`, then archives, uploads with `Config/ExportOptions.plist` and publishes the GitHub Release.
 
-It then tags that commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Harley-Chip-Tracker/releases) listing the commits since the last build (`Tools/github-release.sh`). So every uploaded build matches a tag and a release on GitHub. When processing finishes, add the build to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
-
-Every change to the app (`HarleyChipTracker/`, `Config/` or the Xcode project) gets released this way once it's on `main`. Changes to docs, tests and tools don't need a build.
-
-After a version is live on the App Store, Apple won't take new builds for it. Raise `MARKETING_VERSION` (say, to 1.1) before the next release.
-
-Working with Claude Code in this repo, a Stop hook (`.claude/hooks/require-pushed.sh`) won't let a turn end while changes are uncommitted, commits aren't on `origin/main`, or app changes haven't been released since the last `v*-build*` tag.
+Working with Claude Code in this repo, a Stop hook (`.claude/hooks/require-pushed.sh`) won't let a turn end while changes are uncommitted or commits aren't on `origin/main`. It also flags when app changes haven't been released and the latest Release workflow run failed.
 
 ## Updating the dealer list
 
@@ -95,8 +119,9 @@ HarleyChipTracker/
   Resources/    dealers.json
 HarleyChipTrackerTests/   Swift Testing suite
 Config/         Entitlements (iCloud, push), Info.plist additions, TestFlight export options
-Tools/          update_dealers.py, make_icon.swift (app icon), release.sh (upload a build),
-                github-release.sh (tag it and publish the GitHub Release)
+Tools/          update_dealers.py, make_icon.swift (app icon), next-build-number.sh,
+                github-release.sh (tag and publish a GitHub Release), release.sh (upload from this Mac)
+.github/        Release workflow (build and upload on every app change)
 ```
 
 ## Disclaimer
