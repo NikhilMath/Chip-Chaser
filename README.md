@@ -63,9 +63,15 @@ Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab ma
 Tools/release.sh
 ```
 
-The script only runs when everything is committed and on `origin/main`. It bumps the build number, archives, uploads with `Config/ExportOptions.plist`, then commits and pushes the bump, so every TestFlight build matches a commit on GitHub. When processing finishes, add the build to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
+The script only runs when everything is committed and on `origin/main`. It bumps the build number, archives, uploads with `Config/ExportOptions.plist`, then commits and pushes the bump.
 
-Working with Claude Code in this repo, a Stop hook (`.claude/hooks/require-pushed.sh`) won't let a turn end while changes are uncommitted or commits aren't on `origin/main`.
+It then tags that commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Harley-Chip-Tracker/releases) listing the commits since the last build (`Tools/github-release.sh`). So every uploaded build matches a tag and a release on GitHub. When processing finishes, add the build to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
+
+Every change to the app (`HarleyChipTracker/`, `Config/` or the Xcode project) gets released this way once it's on `main`. Changes to docs, tests and tools don't need a build.
+
+After a version is live on the App Store, Apple won't take new builds for it. Raise `MARKETING_VERSION` (say, to 1.1) before the next release.
+
+Working with Claude Code in this repo, a Stop hook (`.claude/hooks/require-pushed.sh`) won't let a turn end while changes are uncommitted, commits aren't on `origin/main`, or app changes haven't been released since the last `v*-build*` tag.
 
 ## Updating the dealer list
 
@@ -89,7 +95,8 @@ HarleyChipTracker/
   Resources/    dealers.json
 HarleyChipTrackerTests/   Swift Testing suite
 Config/         Entitlements (iCloud, push), Info.plist additions, TestFlight export options
-Tools/          update_dealers.py, make_icon.swift (app icon), release.sh (TestFlight upload)
+Tools/          update_dealers.py, make_icon.swift (app icon), release.sh (upload a build),
+                github-release.sh (tag it and publish the GitHub Release)
 ```
 
 ## Disclaimer

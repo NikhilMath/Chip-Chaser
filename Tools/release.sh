@@ -4,8 +4,9 @@
 #   Tools/release.sh
 #
 # Refuses to run unless everything is committed and on origin/main, bumps the
-# build number, archives, uploads, then commits and pushes the bump. Changed the
-# SwiftData models? Deploy the CloudKit schema to production first (see README).
+# build number, archives, uploads, then commits and pushes the bump and publishes
+# a GitHub Release for it (Tools/github-release.sh). Changed the SwiftData
+# models? Deploy the CloudKit schema to production first (see README).
 set -euo pipefail
 cd "${0:A:h}/.."
 
@@ -43,4 +44,10 @@ fi
 
 git commit -q -m "Upload build $next to TestFlight" -- "$project"
 git push -q origin HEAD:main
-echo "Uploaded build $next and pushed the bump. Add it to a TestFlight group in App Store Connect once it finishes processing."
+echo "Uploaded build $next and pushed the bump."
+
+if ! Tools/github-release.sh HEAD; then
+  echo "The upload worked, but the GitHub Release didn't. Retry with: Tools/github-release.sh HEAD" >&2
+  exit 1
+fi
+echo "Published the GitHub Release. Add the build to a TestFlight group in App Store Connect once it finishes processing."
