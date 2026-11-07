@@ -9,6 +9,12 @@ Chip Chaser is an iPhone app for Harley-Davidson chip collectors (it started out
   <img src="docs/screenshots/detail.png" width="200" alt="Dealer detail with chip count">
 </p>
 
+On iPhone Duo, iOS moves the tab bar to a rail along the right edge; no layout changes were needed:
+
+<img src="docs/appstore/duo/preview.png" alt="Dealers, Map, Progress and dealer detail on iPhone Duo, with the tab bar as a rail on the right">
+
+Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/), next to the App Store screenshots in [`docs/appstore/`](docs/appstore/).
+
 ## Features
 
 - **Every location, built in.** 648 US and Canadian locations (556 dealerships, 26 satellite stores, 66 apparel & gift shops) from Harley-Davidson's dealer locator, including Alaska, Hawaii, Puerto Rico and Guam.
