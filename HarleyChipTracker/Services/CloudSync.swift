@@ -115,7 +115,7 @@ final class CloudAccount {
             case .available:
                 "Your collection is saved to your Apple ID in iCloud and syncs to every iPhone signed in with it. On a new phone, just install the app and your chips come back."
             case .noAccount:
-                "To save your collection to iCloud, open the Settings app, sign in with your Apple ID, and make sure iCloud is on for Harley Chip Tracker. Until then, it's saved on this iPhone only."
+                "To save your collection to iCloud, open the Settings app, sign in with your Apple ID, and make sure iCloud is on for Chip Chaser. Until then, it's saved on this iPhone only."
             case .restricted:
                 "iCloud is restricted on this iPhone (Screen Time or device management), so your collection is saved on this iPhone only."
             case .temporarilyUnavailable:

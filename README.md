@@ -1,6 +1,6 @@
-# Harley Chip Tracker
+# Chip Chaser
 
-An iPhone app for Harley-Davidson chip collectors. Every Harley-Davidson dealership sells its own poker chip; this app lists them all and tracks which ones you have and which you're still missing.
+Chip Chaser is an iPhone app for Harley-Davidson chip collectors (it started out as Harley Chip Tracker, the name the code still uses). Every Harley-Davidson dealership sells its own poker chip; this app lists them all and tracks which ones you have and which you're still missing.
 
 <p>
   <img src="docs/screenshots/dealers.png" width="200" alt="Dealer list grouped by state">
@@ -88,4 +88,4 @@ Tools/          update_dealers.py, make_icon.swift (app icon), release.sh (TestF
 
 ## Disclaimer
 
-Harley Chip Tracker is an independent fan project. It is not affiliated with, sponsored by, or endorsed by Harley-Davidson. Harley-Davidson and related marks are trademarks of H-D U.S.A., LLC. Location data comes from Harley-Davidson's public dealer locator.
+Chip Chaser is an independent fan project. It is not affiliated with, sponsored by, or endorsed by Harley-Davidson. Harley-Davidson and related marks are trademarks of H-D U.S.A., LLC. Location data comes from Harley-Davidson's public dealer locator.

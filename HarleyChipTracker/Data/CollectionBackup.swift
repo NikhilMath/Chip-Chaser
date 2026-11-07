@@ -22,7 +22,7 @@ nonisolated struct CollectionBackup: Codable, Sendable, Transferable {
         var createdAt: Date
     }
 
-    var app = "Harley Chip Tracker"
+    var app = "Chip Chaser"
     var version = 1
     var exportedAt: Date
     var chips: [Chip]
@@ -32,7 +32,7 @@ nonisolated struct CollectionBackup: Codable, Sendable, Transferable {
         DataRepresentation(exportedContentType: .json) { backup in
             try CollectionBackup.encoder.encode(backup)
         }
-        .suggestedFileName("Harley Chip Tracker Backup.json")
+        .suggestedFileName("Chip Chaser Backup.json")
     }
 
     static let encoder: JSONEncoder = {

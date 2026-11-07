@@ -51,7 +51,7 @@ struct SettingsView: View {
 
                 Section {
                     ShareLink(item: CollectionBackup(records: records, customDealers: customDealers),
-                              preview: SharePreview("Harley Chip Tracker Backup", image: Image(systemName: "doc.text"))) {
+                              preview: SharePreview("Chip Chaser Backup", image: Image(systemName: "doc.text"))) {
                         Label("Export Backup", systemImage: "square.and.arrow.up")
                     }
                     Button {
@@ -77,7 +77,7 @@ struct SettingsView: View {
                     LabeledContent("Locations in List", value: "\(app.directory.dealers.count)")
                     LabeledContent("List Updated", value: app.directory.generatedDisplay)
                     LabeledContent("Version", value: Bundle.main.versionString)
-                    Text("Location data comes from Harley-Davidson's public dealer locator. Harley Chip Tracker is an independent collector's app and is not affiliated with, sponsored by, or endorsed by Harley-Davidson.")
+                    Text("Location data comes from Harley-Davidson's public dealer locator. Chip Chaser is an independent collector's app and is not affiliated with, sponsored by, or endorsed by Harley-Davidson.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -114,7 +114,7 @@ struct SettingsView: View {
             message = AlertMessage(title: "Backup Imported",
                                    body: "Restored \(restored) collected chips and \(backup.customStores.count) added stores.")
         } catch is DecodingError {
-            message = AlertMessage(title: "Couldn't Import", body: "That file isn't a Harley Chip Tracker backup.")
+            message = AlertMessage(title: "Couldn't Import", body: "That file isn't a Chip Chaser backup.")
         } catch {
             message = AlertMessage(title: "Couldn't Import", body: error.localizedDescription)
         }
