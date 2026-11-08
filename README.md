@@ -3,27 +3,27 @@
 Chip Chaser is an iPhone app for Harley-Davidson chip collectors (it started out as Harley Chip Tracker, the name the code still uses). Every Harley-Davidson dealership sells its own poker chip; this app lists them all and tracks which ones you have and which you're still missing.
 
 <p>
-  <img src="docs/screenshots/dealers.png" width="200" alt="Dealer list grouped by state">
   <img src="docs/screenshots/map.png" width="200" alt="Map of collected and missing chips">
+  <img src="docs/screenshots/dealers.png" width="200" alt="Dealer list grouped by state">
   <img src="docs/screenshots/progress.png" width="200" alt="Collection progress">
   <img src="docs/screenshots/detail.png" width="200" alt="Dealer detail with chip count">
 </p>
 
 On iPhone Duo's outer screen (folded), iOS moves the tab bar to a rail along the right edge; no layout changes were needed:
 
-<img src="docs/appstore/duo/preview.png" alt="Dealers, Map, Progress and dealer detail on iPhone Duo, with the tab bar as a rail on the right">
+<img src="docs/appstore/duo/preview.png" alt="Map, Dealers, Progress and dealer detail on iPhone Duo, with the tab bar as a rail on the right">
 
 Unfolded, the app fills the big inner screen in landscape, with the same rail on the right:
 
-<img src="docs/appstore/duo-unfolded/preview.png" alt="Dealers, Map, Progress and dealer detail on the unfolded iPhone Duo's inner screen, in landscape">
+<img src="docs/appstore/duo-unfolded/preview.png" alt="Map, Dealers, Progress and dealer detail on the unfolded iPhone Duo's inner screen, in landscape">
 
 Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (folded) and [`docs/appstore/duo-unfolded/`](docs/appstore/duo-unfolded/), next to the App Store screenshots in [`docs/appstore/`](docs/appstore/).
 
 ## Features
 
+- **Map first.** The app opens on the map. Orange chips are ones you have, grey ones you're missing. The map centers on your area so you can plan a ride around the chips you still need.
 - **Every location, built in.** 648 US and Canadian locations (556 dealerships, 26 satellite stores, 66 apparel & gift shops) from Harley-Davidson's dealer locator, including Alaska, Hawaii, Puerto Rico and Guam.
 - **Mark chips in one tap.** Tap the chip next to a dealer, or swipe the row. Filter by All / Missing / Collected, search by name, city, state or ZIP, and sort by state, A to Z, or nearest to you.
-- **Map.** Orange chips are ones you have, grey ones you're missing. The map opens on your area so you can plan a ride around the chips you still need.
 - **Progress.** Overall percentage, per-state progress (with a seal when you finish a state), recently collected, and counts of extras.
 - **Trading.** Track how many of each chip you own. Share your *missing list* or *extras for trade* as text to a collector group.
 - **Your own stores.** Add a dealer that's new, closed, or overseas; it counts like any other.
@@ -71,7 +71,7 @@ From the command line:
 xcodebuild test -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
 ```
 
-Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab map|progress|settings` and `-debugDealer <id>` launch arguments for screenshots.
+Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab dealers|progress|settings` (the app opens on the map otherwise) and `-debugDealer <id>` (with `-debugTab dealers`) launch arguments for screenshots. The App Store set in `docs/appstore/` is, in order: `-demoData YES`, then adding `-debugTab dealers`, `-debugTab progress`, and `-debugTab dealers -debugDealer hd-210`, with the simulator's location set to Milwaukee (43.0389, -87.9065) and the status bar at 9:41.
 
 ## Releasing to TestFlight
 

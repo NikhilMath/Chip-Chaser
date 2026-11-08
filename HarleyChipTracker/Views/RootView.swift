@@ -2,15 +2,16 @@ import SwiftData
 import SwiftUI
 
 struct RootView: View {
-    @SceneStorage("selectedTab") private var selectedTab = AppTab.dealers
+    /// The app always opens on the map, the first tab.
+    @State private var selectedTab = AppTab.map
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("Dealers", systemImage: "list.bullet", value: AppTab.dealers) {
-                DealerListView()
-            }
             Tab("Map", systemImage: "map", value: AppTab.map) {
                 ChipMapView()
+            }
+            Tab("Dealers", systemImage: "list.bullet", value: AppTab.dealers) {
+                DealerListView()
             }
             Tab("Progress", systemImage: "chart.pie", value: AppTab.progress) {
                 CollectionStatsView()
@@ -29,7 +30,7 @@ struct RootView: View {
 }
 
 enum AppTab: String {
-    case dealers, map, progress, settings
+    case map, dealers, progress, settings
 }
 
 #Preview {
