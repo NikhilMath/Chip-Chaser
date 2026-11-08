@@ -21,7 +21,7 @@ struct ChipMapView: View {
 
     var body: some View {
         let status = CollectionStatus(records: records)
-        let tracked = app.trackedDealers(custom: customDealers)
+        let tracked = app.trackedDealers(custom: customDealers, status: status)
         let pins = tracked.filter {
             $0.coordinate != nil && filter.includes(collected: status.isCollected($0.id))
         }

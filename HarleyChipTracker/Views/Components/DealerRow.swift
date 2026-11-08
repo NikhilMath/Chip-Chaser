@@ -34,6 +34,12 @@ struct DealerRow: View {
                         .foregroundStyle(.secondary)
                         .labelStyle(.titleAndIcon)
                 }
+                if dealer.isClosed {
+                    Label("Closed", systemImage: "xmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                }
             }
 
             Spacer(minLength: 4)

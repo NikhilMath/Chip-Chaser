@@ -17,8 +17,18 @@ struct HarleyChipTrackerApp: App {
                 .environment(model)
                 .environment(cloudAccount)
                 .cloudSyncMaintenance(account: cloudAccount)
+                .automaticBackups(enabled: !Self.usesDemoData)
         }
         .modelContainer(container)
+    }
+
+    /// Demo data lives in memory and must never end up in the collector's automatic backups.
+    private static var usesDemoData: Bool {
+        #if DEBUG
+        DebugLaunch.demoData
+        #else
+        false
+        #endif
     }
 
     private static func makeContainer() -> ModelContainer {

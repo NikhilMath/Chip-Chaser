@@ -51,6 +51,11 @@ nonisolated struct Dealer: Identifiable, Hashable, Codable, Sendable {
     var website: String?
     /// For satellite stores and shops: the dealership that runs them.
     var parentId: String?
+    /// When the location dropped out of Harley-Davidson's locator ("2027-03-01"), if it has.
+    /// Closed locations stay in the bundled list forever so chips collected there never vanish.
+    var closed: String?
+
+    var isClosed: Bool { closed != nil }
 
     var regionKey: RegionKey { RegionKey(country: country, code: region) }
 

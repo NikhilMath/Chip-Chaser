@@ -29,7 +29,7 @@ Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (fol
 - **Your own stores.** Add a dealer that's new, closed, or overseas; it counts like any other.
 - **Choose what counts.** Turn Canadian locations, satellite stores or apparel shops on or off in Settings.
 - **Saved to your Apple ID.** Your collection syncs through your own iCloud account to every iPhone signed in with the same Apple ID. There's no separate sign-in; Settings shows whether iCloud is on.
-- **Backup.** Export your collection as a JSON file (Files, AirDrop) and import it on any phone.
+- **Backup.** Export your collection as a JSON file (Files, AirDrop) and import it on any phone. The app also keeps automatic backups on the iPhone, one per day and per app version, so there's always a copy from before an update (Settings → Automatic Backups).
 
 ## iCloud sync
 
@@ -44,6 +44,18 @@ CloudKit can't enforce one record per dealer, so the app merges duplicates (the 
 3. Then archive and upload the build.
 
 Only add fields; never rename or delete one that has shipped.
+
+## Keeping collections safe across updates
+
+App updates keep the app's files, so a collection survives an update as long as the new build can still read it and still knows every dealer it points to. These rules make sure of that:
+
+- **The store never moves.** It's `Library/Application Support/default.store`, where 1.0 put it (`CloudSync.storeURL`). A store at any other path opens empty.
+- **Model changes only add.** New properties need a default value. Never rename, retype or remove a property that has shipped (CloudKit's production schema can't take those changes either).
+- **Dealer IDs never disappear.** Chips are keyed by Harley-Davidson's dealer ID. `Tools/update_dealers.py` keeps any location that drops out of the locator, marked `"closed"`. The app keeps showing a closed location to collectors who have its chip, so closings don't take chips away or count as missing. `HarleyChipTrackerTests/Fixtures/known-dealer-ids.txt` lists every ID ever shipped, and the script refuses to drop one.
+- **Tests check all of this.** `UpgradeTests` opens `Fixtures/collection-1.0.store`, a collection saved by the 1.0 App Store build, and checks that every chip, note and added store is still there and still counts. It also checks that every shipped dealer ID still resolves. If a change would strand anyone's chips, these tests fail.
+- **Automatic backups are the safety net.** Each day the app is used, it saves the collection to `Application Support/Automatic Backups/` (`AutomaticBackups.swift`): one file per day and per app version, keeping the newest 14. It never saves an empty collection over a good one. Collectors can restore one from Settings.
+
+To check an update by hand: install the App Store version on a simulator, mark some chips, install the new build over it (`xcrun simctl install booted …`) and check that the count is unchanged.
 
 ## Running it
 
@@ -109,7 +121,7 @@ Dealers open, close and get renamed. To refresh the bundled list:
 python3 Tools/update_dealers.py
 ```
 
-The script runs about 150 radius searches against Harley-Davidson's public dealer locator, de-duplicates them, and rewrites `HarleyChipTracker/Resources/dealers.json`, keeping only the fields the app uses. Chip records are keyed by Harley-Davidson's dealer ID, so a refresh never loses anyone's collection.
+The script runs about 150 radius searches against Harley-Davidson's public dealer locator, de-duplicates them, and rewrites `HarleyChipTracker/Resources/dealers.json`, keeping only the fields the app uses. Chip records are keyed by Harley-Davidson's dealer ID. Locations that have left the locator stay in the file, marked `"closed"` with the date they went missing, so a refresh never takes a chip out of anyone's collection. New IDs are added to `HarleyChipTrackerTests/Fixtures/known-dealer-ids.txt`; commit both files together.
 
 ## Project layout
 
@@ -121,7 +133,7 @@ HarleyChipTracker/
   Services/     One-shot location provider, iCloud sync and account status
   Views/        Dealers, Map, Progress, Settings, detail and add-store screens
   Resources/    dealers.json
-HarleyChipTrackerTests/   Swift Testing suite
+HarleyChipTrackerTests/   Swift Testing suite; Fixtures/ holds a 1.0 collection and every shipped dealer ID
 Config/         Entitlements (iCloud, push), Info.plist additions, TestFlight export options
 Tools/          update_dealers.py, make_icon.swift (app icon), next-build-number.sh,
                 github-release.sh (tag and publish a GitHub Release), release.sh (upload from this Mac)

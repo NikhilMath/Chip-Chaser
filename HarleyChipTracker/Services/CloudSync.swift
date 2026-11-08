@@ -14,25 +14,38 @@ import SwiftUI
 enum CloudSync {
     nonisolated static let containerID = "iCloud.com.nikhilmath.HarleyChipTracker"
     static let models: [any PersistentModel.Type] = [ChipRecord.self, CustomDealer.self]
+    static var schema: Schema { Schema(models) }
+
+    /// Where every collection lives on the iPhone: SwiftData's default location, where 1.0
+    /// saved it. Spelled out so it can never move by accident. A store at any other path
+    /// opens empty, and to the collector it looks like an update wiped their chips.
+    /// Never change it.
+    static var storeURL: URL { URL.applicationSupportDirectory.appending(path: "default.store") }
 
     /// The app's store, synced through iCloud. Falls back to a local-only store (same file)
     /// if CloudKit can't be set up, so the collection always opens.
+    ///
+    /// App updates keep this file. To keep it readable, model changes must only add properties
+    /// with default values. `UpgradeTests` opens a store saved by 1.0 to prove it.
     static func makeContainer() -> ModelContainer {
-        let schema = Schema(models)
         do {
-            return try ModelContainer(for: schema, configurations: ModelConfiguration(
-                schema: schema, cloudKitDatabase: .private(containerID)
-            ))
+            return try container(at: storeURL, cloudKit: true)
         } catch {
             print("iCloud store unavailable, using local store: \(error)")
         }
         do {
-            return try ModelContainer(for: schema, configurations: ModelConfiguration(
-                schema: schema, cloudKitDatabase: .none
-            ))
+            return try container(at: storeURL, cloudKit: false)
         } catch {
             fatalError("Could not open the collection store: \(error)")
         }
+    }
+
+    /// Opens the collection store at `url`, the way the app does.
+    static func container(at url: URL, cloudKit: Bool) throws -> ModelContainer {
+        let schema = schema
+        return try ModelContainer(for: schema, configurations: ModelConfiguration(
+            schema: schema, url: url, cloudKitDatabase: cloudKit ? .private(containerID) : .none
+        ))
     }
 
     #if DEBUG

@@ -5,6 +5,12 @@ Runs ~150 radius searches over a lat/long grid covering the US (incl. Alaska, Ha
 Puerto Rico, Guam) and Canada, de-duplicates by dealer ID, and keeps only the fields the
 app needs (no staff names or email addresses).
 
+Collectors' chips are keyed by these dealer IDs, so the list only ever grows. A location
+from the previous list that's gone from the locator is kept, marked "closed" with the date
+it disappeared, and the app keeps showing it to anyone who has its chip. Every ID ever
+shipped is also listed in HarleyChipTrackerTests/Fixtures/known-dealer-ids.txt, and a test
+fails if one of them stops resolving.
+
 Usage:
     python3 Tools/update_dealers.py              # writes the bundled dealers.json
     python3 Tools/update_dealers.py --cache /tmp/hd-cache   # reuse raw responses between runs
@@ -34,6 +40,7 @@ COUNTRY = {"USA": ("US", None), "PRI": ("US", "PR"), "GUM": ("US", "GU"), "CAN":
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_OUT = os.path.join(REPO, "HarleyChipTracker", "Resources", "dealers.json")
+KNOWN_IDS = os.path.join(REPO, "HarleyChipTrackerTests", "Fixtures", "known-dealer-ids.txt")
 
 
 def grid_points():
@@ -122,6 +129,40 @@ def to_record(raw):
     return {key: value for key, value in record.items() if value not in (None, "")}
 
 
+def carry_over_closed(records, previous_path, today):
+    """Keeps every location from the previous list that the locator no longer returns.
+
+    Marked "closed" with the date it went missing (kept from an earlier run if it was already
+    closed). One that comes back in the locator is fresh from the feed, so it reopens.
+    """
+    try:
+        with open(previous_path, encoding="utf-8") as fh:
+            previous = json.load(fh)["dealers"]
+    except FileNotFoundError:
+        return records, 0
+    current = {r["id"] for r in records}
+    closed = []
+    for old in previous:
+        if old["id"] not in current:
+            closed.append({**old, "closed": old.get("closed") or today})
+    return records + closed, len(closed)
+
+
+def update_known_ids(ids):
+    """Adds any new IDs to the list of every dealer ID the app has shipped."""
+    known = set()
+    if os.path.exists(KNOWN_IDS):
+        with open(KNOWN_IDS, encoding="utf-8") as fh:
+            known = {line.strip() for line in fh if line.strip() and not line.startswith("#")}
+    missing = known - set(ids)
+    if missing:
+        sys.exit(f"these shipped dealer IDs would disappear: {sorted(missing)}")
+    with open(KNOWN_IDS, "w", encoding="utf-8") as fh:
+        fh.write("# Every dealer ID Chip Chaser has ever bundled. Collectors' chips are keyed by them,\n")
+        fh.write("# so each one must stay in dealers.json (closed if need be). Tools/update_dealers.py adds to it.\n")
+        fh.write("\n".join(sorted(known | set(ids), key=lambda i: (len(i), i))) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", default=DEFAULT_OUT)
@@ -141,20 +182,25 @@ def main():
         print(f"[{index}/{len(points)}] {lat},{lon}: {len(dealers)} (unique so far {len(raw)})", flush=True)
 
     records = [r for r in (to_record(d) for d in raw.values()) if r]
+    today = datetime.date.today().isoformat()
+    records, closed_count = carry_over_closed(records, args.out, today)
     records.sort(key=lambda r: (r["country"] != "US", r["country"], r["region"], r["name"].lower(), r["city"]))
     ids = [r["id"] for r in records]
     if len(ids) != len(set(ids)):
         sys.exit("duplicate dealer IDs in output")
+    if args.out == DEFAULT_OUT:
+        update_known_ids(ids)
 
     with open(args.out, "w", encoding="utf-8") as fh:
         fh.write('{\n  "source": "Harley-Davidson public dealer locator",\n')
-        fh.write(f'  "generated": "{datetime.date.today().isoformat()}",\n  "dealers": [\n')
+        fh.write(f'  "generated": "{today}",\n  "dealers": [\n')
         fh.write(",\n".join("    " + json.dumps(r, ensure_ascii=False) for r in records))
         fh.write("\n  ]\n}\n")
 
     print(f"Wrote {len(records)} locations to {args.out}")
     print("  by country:", dict(Counter(r["country"] for r in records)))
     print("  by kind:", dict(Counter(r["kind"] for r in records)))
+    print(f"  closed, kept so collectors keep their chips: {closed_count}")
 
 
 if __name__ == "__main__":

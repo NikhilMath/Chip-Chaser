@@ -117,11 +117,26 @@ struct DealerDetailView: View {
                 Text(dealer.cityLine.isEmpty ? dealer.regionName : "\(dealer.city), \(dealer.regionName)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Label(dealer.kind.label, systemImage: dealer.kind.symbol)
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(.quaternary, in: Capsule())
+                HStack(spacing: 6) {
+                    Label(dealer.kind.label, systemImage: dealer.kind.symbol)
+                        .font(.caption.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(.quaternary, in: Capsule())
+                    if dealer.isClosed {
+                        Label("Closed", systemImage: "xmark.circle")
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.quaternary, in: Capsule())
+                    }
+                }
+                if dealer.isClosed {
+                    Text("This location has left Harley-Davidson's dealer list. Your chip from it stays in your collection.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 Text(collected ? "Tap the chip to mark it missing" : "Tap the chip when you get it")
                     .font(.caption)
                     .foregroundStyle(.tertiary)

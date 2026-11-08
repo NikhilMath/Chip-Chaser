@@ -38,7 +38,7 @@ struct DealerListView: View {
 
     var body: some View {
         let status = CollectionStatus(records: records)
-        let tracked = app.trackedDealers(custom: customDealers)
+        let tracked = app.trackedDealers(custom: customDealers, status: status)
         let visible = tracked.filter {
             filter.includes(collected: status.isCollected($0.id)) && $0.matches(search: searchText)
         }

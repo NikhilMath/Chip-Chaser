@@ -65,7 +65,7 @@ struct CollectionTests {
         #expect(store.asDealer.region == "SD")
 
         let model = AppModel(defaults: UserDefaults(suiteName: "test-\(UUID().uuidString)")!)
-        let tracked = model.trackedDealers(custom: [store])
+        let tracked = model.trackedDealers(custom: [store], status: CollectionStatus())
         #expect(tracked.contains { $0.id == store.dealerID })
 
         context.deleteCustomDealer(store)
@@ -163,13 +163,13 @@ struct TrackingTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let model = AppModel(defaults: defaults)
-        let all = model.trackedDealers(custom: [])
+        let all = model.trackedDealers(custom: [], status: CollectionStatus())
         #expect(all.count == model.directory.dealers.count, "everything is tracked by default")
 
         model.includeCanada = false
         model.includeShops = false
         model.includeSatellites = false
-        let narrowed = model.trackedDealers(custom: [])
+        let narrowed = model.trackedDealers(custom: [], status: CollectionStatus())
         #expect(narrowed.allSatisfy { $0.country == "US" && $0.kind == .dealer })
         #expect(narrowed.count < all.count)
 

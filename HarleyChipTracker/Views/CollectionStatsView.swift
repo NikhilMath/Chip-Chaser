@@ -9,7 +9,7 @@ struct CollectionStatsView: View {
 
     var body: some View {
         let status = CollectionStatus(records: records)
-        let tracked = app.trackedDealers(custom: customDealers)
+        let tracked = app.trackedDealers(custom: customDealers, status: status)
         let collected = status.collectedCount(in: tracked)
         let groups = RegionGroup.make(from: tracked)
         let completeStates = groups.filter { group in group.dealers.allSatisfy { status.isCollected($0.id) } }.count
@@ -187,7 +187,7 @@ struct RegionDealersView: View {
 
     var body: some View {
         let status = CollectionStatus(records: records)
-        let dealers = app.trackedDealers(custom: customDealers)
+        let dealers = app.trackedDealers(custom: customDealers, status: status)
             .filter { $0.regionKey == regionKey }
             .sorted(by: Dealer.byName)
         let collected = status.collectedCount(in: dealers)

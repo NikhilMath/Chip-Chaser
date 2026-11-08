@@ -53,9 +53,11 @@ final class AppModel {
         return true
     }
 
-    /// Every tracked location: the bundled list plus stores the collector added.
-    func trackedDealers(custom: [CustomDealer]) -> [Dealer] {
-        (directory.dealers + custom.map(\.asDealer)).filter(isTracked)
+    /// Every tracked location: the bundled list, stores the collector added, and closed
+    /// locations whose chip they already have, so a dealer closing never takes a chip away.
+    func trackedDealers(custom: [CustomDealer], status: CollectionStatus) -> [Dealer] {
+        let closed = directory.closedDealers.filter { status.isCollected($0.id) }
+        return (directory.dealers + closed + custom.map(\.asDealer)).filter(isTracked)
     }
 
     /// Looks up any location by ID, bundled or hand-added, tracked or not.

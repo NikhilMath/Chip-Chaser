@@ -59,10 +59,15 @@ struct SettingsView: View {
                     } label: {
                         Label("Import Backup", systemImage: "square.and.arrow.down")
                     }
+                    NavigationLink {
+                        AutomaticBackupsView()
+                    } label: {
+                        Label("Automatic Backups", systemImage: "clock.arrow.circlepath")
+                    }
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("An extra copy you control. Export a backup to Files, or AirDrop it to a friend's phone or to a phone on a different Apple ID.")
+                    Text("Chip Chaser also saves a copy on this iPhone each day you use it, including one from before every update. Export a backup to keep your own copy in Files, or AirDrop it to a phone on a different Apple ID.")
                 }
 
                 Section {
@@ -90,7 +95,7 @@ struct SettingsView: View {
             .confirmationDialog("Reset your collection?", isPresented: $confirmingReset, titleVisibility: .visible) {
                 Button("Erase All Chips and Stores", role: .destructive, action: reset)
             } message: {
-                Text("This deletes every chip you've marked, your notes, and stores you added, on this iPhone and in iCloud. Export a backup first if you might want them back.")
+                Text("This deletes every chip you've marked, your notes, and stores you added, on this iPhone and in iCloud. Automatic backups on this iPhone are kept, so you can restore them from Settings.")
             }
             .alert(message?.title ?? "", isPresented: Binding(
                 get: { message != nil },
