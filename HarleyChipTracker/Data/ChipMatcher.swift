@@ -119,23 +119,31 @@ nonisolated struct ChipMatcher: Sendable {
         var chosen = Set<String>()
         var chips: [Chip] = []
 
-        while chips.count < limit {
+        for _ in 0..<(limit * 3) where chips.count < limit {
             let ranked = rank(strengths: strengths, active: active, near: location, excluding: chosen)
             // The best confident match, even if a nearby store with half its name read scores higher.
             guard let top = ranked.first(where: \.isStrong) else { break }
+            chosen.insert(top.id)
 
             let entry = entries.first { $0.dealer.id == top.id }
-            let evidence = entry.map { evidenceReadings(for: $0, strengths: strengths, active: active) } ?? []
+            let evidence = entry.map { onOneChip(evidenceReadings(for: $0, strengths: strengths, active: active),
+                                                 for: $0, readings: readings, strengths: strengths) } ?? []
             let region = Self.region(of: evidence.map { readings[$0].box })
+            for index in evidence { active[index] = false }
+
+            // Text left over on a chip already counted (part of its name misread, or its state
+            // matching a store named after the state) isn't another chip.
+            let middle = CGPoint(x: region.midX, y: region.midY)
+            let onCountedChip = !evidence.isEmpty && chips.contains { chip in
+                chip.region.contains(middle) && chip.region.width * chip.region.height >= region.width * region.height * 0.5
+            }
+            if onCountedChip { continue }
 
             let alternatives = ranked
                 .filter { $0.id != top.id && $0.score >= max(Self.possibleScore, top.score * 0.6) }
                 .prefix(8)
             chips.append(Chip(best: top, alternatives: Array(alternatives), region: region))
-            chosen.insert(top.id)
-
             guard !evidence.isEmpty else { break }
-            for index in evidence { active[index] = false }
         }
 
         var suggestions: [Candidate] = []
@@ -238,6 +246,49 @@ nonisolated struct ChipMatcher: Sendable {
             for index in values.indices where active[index] && values[index] >= 0.5 { indices.insert(index) }
         }
         return indices.sorted()
+    }
+
+    /// The part of `evidence` on one chip: the one that spells out the most of `entry`.
+    ///
+    /// Several chips from one state all carry the state's name, which can be a store's name
+    /// too ("Wisconsin Harley-Davidson"). Readings sit on the same chip when one's middle falls
+    /// inside another's box, as every line on a chip does inside its unrolled rim.
+    private func onOneChip(_ evidence: [Int], for entry: Entry, readings: [Reading], strengths: [String: [Double]]) -> [Int] {
+        guard evidence.count > 1 else { return evidence }
+        var parent = Array(evidence.indices)
+        func root(_ index: Int) -> Int {
+            var index = index
+            while parent[index] != index { index = parent[index] }
+            return index
+        }
+        for first in evidence.indices {
+            let a = readings[evidence[first]].box
+            for second in evidence.indices where second > first {
+                let b = readings[evidence[second]].box
+                if a.contains(CGPoint(x: b.midX, y: b.midY)) || b.contains(CGPoint(x: a.midX, y: a.midY)) {
+                    parent[root(first)] = root(second)
+                }
+            }
+        }
+        var groups: [Int: [Int]] = [:]
+        for index in evidence.indices { groups[root(index), default: []].append(evidence[index]) }
+        guard groups.count > 1 else { return evidence }
+
+        func score(_ group: [Int]) -> Double {
+            var total = 0.0
+            for (words, share) in [(entry.name, 1.0), (entry.city, 0.7)] {
+                for word in words {
+                    guard let values = strengths[word] else { continue }
+                    total += share * (weights[word] ?? 1) * (group.map { values[$0] }.max() ?? 0)
+                }
+            }
+            return total
+        }
+        let best = groups.values.max { lhs, rhs in
+            let left = score(lhs), right = score(rhs)
+            return left != right ? left < right : lhs.count < rhs.count
+        }
+        return (best ?? evidence).sorted()
     }
 
     // MARK: - Reading the text

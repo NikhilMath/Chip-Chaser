@@ -52,6 +52,32 @@ struct ChipMatcherTests {
         #expect(Set(lasVegas).isSubset(of: offered))
     }
 
+    @Test func chipsFromOneStateStayApart() {
+        // Three Wisconsin chips, one from a store named after the state: every chip says
+        // "Wisconsin", but each match keeps to its own chip and a stray "WISCONSIN" read off the
+        // Milwaukee chip isn't a fourth one.
+        let milwaukee = CGRect(x: 0.04, y: 0.08, width: 0.45, height: 0.34)
+        let oconomowoc = CGRect(x: 0.55, y: 0.24, width: 0.36, height: 0.27)
+        let westBend = CGRect(x: 0.2, y: 0.58, width: 0.36, height: 0.27)
+        let snippets = [
+            ChipMatcher.Snippet("• MILWAUKEE HARLEY-DAVIDSON •", box: milwaukee),
+            ChipMatcher.Snippet("MILWAUKEE, WISCONSIN", box: milwaukee),
+            ChipMatcher.Snippet("WISCONSIN", box: CGRect(x: 0.23, y: 0.29, width: 0.16, height: 0.08)),
+            ChipMatcher.Snippet("• WISCONSIN HARLEY-DAVIDSON •", box: oconomowoc),
+            ChipMatcher.Snippet("OCONOMOWOC, WISCONSIN", box: oconomowoc),
+            ChipMatcher.Snippet("WEST BEND HARLEY-DAVIDSON", box: westBend),
+            ChipMatcher.Snippet("WEST BEND, WISCONSIN", box: westBend),
+        ]
+        let chips = matcher.findChips(in: snippets).chips
+        #expect(chips.map(\.best.id).sorted() == ["hd-3276", "hd-5650", "hd-5651"])
+        for chip in chips {
+            let middle = CGPoint(x: chip.region.midX, y: chip.region.midY)
+            let home = [milwaukee, oconomowoc, westBend].filter { $0.contains(middle) }
+            #expect(home.count == 1, "\(chip.best.dealer.name) spans \(chip.region)")
+            #expect(home.first.map { $0.insetBy(dx: -0.01, dy: -0.01).contains(chip.region) } == true)
+        }
+    }
+
     @Test func whereThePhotoWasTakenBreaksTies() throws {
         let store = try #require(directory.dealer(id: "hd-4448"))
         let there = try #require(store.location)
