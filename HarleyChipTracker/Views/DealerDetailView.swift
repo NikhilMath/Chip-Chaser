@@ -242,7 +242,8 @@ struct DealerDetailView: View {
     @ViewBuilder
     private var visitSection: some View {
         let parent = dealer.parentId.flatMap { app.directory.dealer(id: $0) }
-        if dealer.mapsURL != nil || dealer.phoneURL != nil || dealer.websiteURL != nil || parent != nil {
+        if dealer.mapsURL != nil || dealer.phoneURL != nil || dealer.websiteURL != nil || parent != nil
+            || dealer.openingHours != nil {
             Section("Visit") {
                 if let url = dealer.mapsURL, dealer.address != nil || dealer.coordinate != nil {
                     Link(destination: url) {
@@ -252,6 +253,9 @@ struct DealerDetailView: View {
                             Image(systemName: "map")
                         }
                     }
+                }
+                if let hours = dealer.openingHours {
+                    StoreHoursRow(hours: hours, timeZone: dealer.storeTimeZone)
                 }
                 if let phone = dealer.phone, let url = dealer.phoneURL {
                     Link(destination: url) {

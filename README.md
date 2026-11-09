@@ -25,6 +25,7 @@ Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (fol
 - **Every location, built in.** 648 US and Canadian locations (556 dealerships, 26 satellite stores, 66 apparel & gift shops) from Harley-Davidson's dealer locator, including Alaska, Hawaii, Puerto Rico and Guam.
 - **Snap your chips.** Take a photo of a chip (or several laid out face up) and the app reads the dealer's name off each one, on the iPhone, and adds it to your collection with its photo. You check each match first, and can pick the dealer yourself if it can't read one.
 - **Your digital collection.** The Collection tab shows every chip you have, with its photo. Each dealer's page shows your chip's photo too; add, retake or remove it there.
+- **Store hours.** Each location shows whether it's open right now ("Open now · closes 6 PM", "Closed · opens 9 AM Tue") and its weekly hours, read by the store's own clock, so a dealer two time zones away shows its local time. Lists mark each store open or closed now.
 - **Mark chips in one tap.** Tap the chip next to a dealer, or swipe the row. Filter by All / Missing / Collected, search by name, city, state or ZIP, and sort by state, A to Z, or nearest to you.
 - **Progress.** Overall percentage, per-state progress (with a seal when you finish a state), recently collected, and counts of extras.
 - **Trading.** Track how many of each chip you own. Share your *missing list* or *extras for trade* as text to a collector group.
@@ -132,10 +133,11 @@ Working with Claude Code in this repo, a Stop hook (`.claude/hooks/require-pushe
 Dealers open, close and get renamed. To refresh the bundled list:
 
 ```bash
+pip3 install timezonefinder   # once
 python3 Tools/update_dealers.py
 ```
 
-The script runs about 150 radius searches against Harley-Davidson's public dealer locator, de-duplicates them, and rewrites `HarleyChipTracker/Resources/dealers.json`, keeping only the fields the app uses. Chip records are keyed by Harley-Davidson's dealer ID. Locations that have left the locator stay in the file, marked `"closed"` with the date they went missing, so a refresh never takes a chip out of anyone's collection. New IDs are added to `HarleyChipTrackerTests/Fixtures/known-dealer-ids.txt`; commit both files together.
+The script runs about 150 radius searches against Harley-Davidson's public dealer locator, de-duplicates them, and rewrites `HarleyChipTracker/Resources/dealers.json`, keeping only the fields the app uses. That includes each location's opening hours (seven strings, Sunday first: `"closed"` or `"09:00-18:00"`) and its IANA time zone, which `timezonefinder` works out from the coordinates so split states like South Dakota or Tennessee come out right. Without `timezonefinder`, time zones carry over from the previous list. A few seasonal shops list every day as closed off-season; the script leaves their hours out rather than show them as closed for good. Chip records are keyed by Harley-Davidson's dealer ID. Locations that have left the locator stay in the file, marked `"closed"` with the date they went missing, so a refresh never takes a chip out of anyone's collection. New IDs are added to `HarleyChipTrackerTests/Fixtures/known-dealer-ids.txt`; commit both files together.
 
 ## Project layout
 

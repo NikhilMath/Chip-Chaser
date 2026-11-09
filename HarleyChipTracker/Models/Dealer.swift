@@ -54,8 +54,28 @@ nonisolated struct Dealer: Identifiable, Hashable, Codable, Sendable {
     /// When the location dropped out of Harley-Davidson's locator ("2027-03-01"), if it has.
     /// Closed locations stay in the bundled list forever so chips collected there never vanish.
     var closed: String?
+    /// Regular weekly hours from the dealer locator, in the store's own time zone. Optional, so
+    /// lists and backups from before hours were added still decode.
+    var hours: OpeningHours?
+    /// The store's IANA time zone ("America/Chicago"), worked out from its coordinates when
+    /// `dealers.json` is built. Hours are read in this zone, never the phone's.
+    var timeZone: String?
 
     var isClosed: Bool { closed != nil }
+
+    /// Hours worth showing: listed with some opening time, for a location that's still open.
+    var openingHours: OpeningHours? {
+        guard !isClosed, let hours, hours.hasOpenTime else { return nil }
+        return hours
+    }
+
+    var storeTimeZone: TimeZone? { timeZone.flatMap(TimeZone.init(identifier:)) }
+
+    /// Open or closed at `date`, by the store's own clock. Nil without hours or a time zone.
+    func openStatus(at date: Date = .now) -> OpeningHours.Status? {
+        guard let hours = openingHours, let zone = storeTimeZone else { return nil }
+        return hours.status(at: date, in: zone)
+    }
 
     var regionKey: RegionKey { RegionKey(country: country, code: region) }
 

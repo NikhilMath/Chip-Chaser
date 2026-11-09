@@ -59,6 +59,15 @@ struct DealerRow: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
+                if dealer.openingHours != nil {
+                    TimelineView(.everyMinute) { context in
+                        if let status = dealer.openStatus(at: context.date) {
+                            Text(status.isOpen ? "Open now" : "Closed now")
+                                .font(.caption)
+                                .foregroundStyle(status.isOpen ? Color.green : Color.secondary)
+                        }
+                    }
+                }
             }
         }
         .padding(.vertical, 2)
