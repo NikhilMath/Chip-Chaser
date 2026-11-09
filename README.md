@@ -98,10 +98,29 @@ Releases happen on GitHub. Every push to `main` that changes the app (`HarleyChi
 4. checks that the iCloud entitlement made it into the archive;
 5. uploads the build to App Store Connect;
 6. tags the commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Chip-Chaser/releases) listing the commits since the last build (`Tools/github-release.sh`).
+7. submits the build for App Review, if this version has a What's New file (see below).
 
 Changes to docs, tests and tools don't trigger a build. To release by hand, open **Actions → Release → Run workflow**, or run `gh workflow run release.yml`. When Apple finishes processing a build, add it to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
 
 After a version is live on the App Store, Apple won't take new builds for it. Raise `MARKETING_VERSION` (say, to 1.1) before the next release. The build number in the project file stays put; the tags are the record.
+
+### Submitting to the App Store
+
+Nobody has to sign in to App Store Connect to ship a version. To send one to App Review:
+
+1. Raise `MARKETING_VERSION` in the Xcode project (say, 1.4 to 1.5).
+2. Write what changed, as users should read it, in `docs/appstore/whats-new/1.5.txt`.
+3. Push to `main`.
+
+After the upload, `Tools/submit-for-review.rb` waits for Apple to process the build, creates the version in App Store Connect, attaches the build, fills in What's New, sets it to release as soon as it's approved, and submits it. The What's New file is the go-ahead: a version without one is only uploaded to TestFlight.
+
+It doesn't submit, and says why in the run's summary, when:
+
+- that version is already with Apple or on the App Store. Later pushes of the same version are TestFlight builds. To swap a fix into a version that's waiting for review, remove it from review in App Store Connect, then run the workflow again;
+- a different version is still with Apple. Only one can be, and the script never pulls one out of review. Run the workflow again once it's released;
+- Apple rejected a version. Read why in App Store Connect first.
+
+Screenshots and the rest of the store listing carry over from the previous version. Change them in App Store Connect when the screens change (`docs/appstore/` has the current set).
 
 ### The App Store Connect key
 

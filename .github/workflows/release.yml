@@ -1,6 +1,8 @@
 # Tests the app, builds it and uploads it to App Store Connect (TestFlight) whenever a
 # push to main changes the app, then tags the commit v<version>-build<N> and
-# publishes a GitHub Release. Run it by hand from the Actions tab too.
+# publishes a GitHub Release. If docs/appstore/whats-new/<version>.txt exists and that
+# version hasn't gone to Apple yet, it also submits the build for App Review
+# (Tools/submit-for-review.rb). Run it by hand from the Actions tab too.
 #
 # Needs three repository secrets from an App Store Connect API key (Admin role,
 # so Xcode can manage signing in the cloud): ASC_KEY_ID, ASC_ISSUER_ID and
@@ -27,7 +29,7 @@ permissions:
 jobs:
   release:
     runs-on: xcode-27
-    timeout-minutes: 45
+    timeout-minutes: 90 # Apple can take a while to process a build before it can be submitted
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
       HAS_KEY: ${{ secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
@@ -117,6 +119,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           Tools/github-release.sh "${{ steps.build.outputs.number }}" "$GITHUB_SHA"
+
+      # Last, so a build that can't be submitted is still on TestFlight and tagged.
+      - name: Submit for App Review (only with a What's New file for this version)
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          version=$(grep -m1 -o 'MARKETING_VERSION = [0-9.]*' HarleyChipTracker.xcodeproj/project.pbxproj | grep -o '[0-9.]*$')
+          ruby Tools/submit-for-review.rb --self-test
+          ruby Tools/submit-for-review.rb "$version" "${{ steps.build.outputs.number }}"
 
       - name: Remove the key
         if: always()

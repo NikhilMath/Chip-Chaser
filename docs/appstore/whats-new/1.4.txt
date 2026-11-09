@@ -1,0 +1,7 @@
+• Stores close together on the map now share one numbered mark. Tap it to zoom in.
+• The dealer list and store hours now update on their own between app updates.
+• Exported backups include your chip photos, and importing a backup never removes or changes anything you've marked since.
+• Tapping a collected chip asks before marking it missing.
+• Search understands more than one word, like "milwaukee wi".
+• Progress shows the closest chips you still need.
+• Jump to any state from the side of the Dealers list, and your filters and sort order are remembered.
