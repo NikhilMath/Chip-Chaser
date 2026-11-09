@@ -138,14 +138,7 @@ struct DealerDetailView: View {
             libraryItem = nil
             Task { await saveLibraryPhoto(item) }
         }
-        .alert(photoProblem?.title ?? "", isPresented: Binding(
-            get: { photoProblem != nil },
-            set: { if !$0 { photoProblem = nil } }
-        ), presenting: photoProblem) { _ in
-            Button("OK") {}
-        } message: { problem in
-            Text(problem.body)
-        }
+        .alert($photoProblem)
         .sheet(isPresented: $showingPhoto) {
             ChipPhotoViewer(dealer: dealer)
         }

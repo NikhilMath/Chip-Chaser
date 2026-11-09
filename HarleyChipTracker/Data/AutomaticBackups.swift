@@ -173,14 +173,7 @@ struct AutomaticBackupsView: View {
         } message: { entry in
             Text("Saved \(entry.savedAt.formatted(date: .abbreviated, time: .shortened)): \(entry.summary). Chips you've marked since stay marked.")
         }
-        .alert(message?.title ?? "", isPresented: Binding(
-            get: { message != nil },
-            set: { if !$0 { message = nil } }
-        ), presenting: message) { _ in
-            Button("OK") {}
-        } message: { message in
-            Text(message.body)
-        }
+        .alert($message)
     }
 
     private func restore(_ entry: AutomaticBackups.Entry) {

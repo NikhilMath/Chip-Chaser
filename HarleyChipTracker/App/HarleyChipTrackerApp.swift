@@ -56,6 +56,8 @@ enum DebugLaunch {
     static var dealerID: String? { UserDefaults.standard.string(forKey: "debugDealer") }
     /// Opens Collection's photo scanner on this image file.
     static var scanImage: String? { UserDefaults.standard.string(forKey: "debugScanImage") }
+    /// With `-debugTab settings`: imports this backup file as if picked in Import Backup.
+    static var importBackup: String? { UserDefaults.standard.string(forKey: "debugImportBackup") }
     static var scanAutoAdd: Bool { UserDefaults.standard.bool(forKey: "debugScanAdd") }
 }
 #endif

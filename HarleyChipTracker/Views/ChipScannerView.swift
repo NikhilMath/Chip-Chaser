@@ -76,14 +76,7 @@ struct ChipScannerView: View {
                 }
             }
         }
-        .alert(problem?.title ?? "", isPresented: Binding(
-            get: { problem != nil },
-            set: { if !$0 { problem = nil } }
-        ), presenting: problem) { _ in
-            Button("OK") {}
-        } message: { problem in
-            Text(problem.body)
-        }
+        .alert($problem)
         .task {
             app.location.refresh()
             #if DEBUG
@@ -362,7 +355,8 @@ struct ChipScannerView: View {
         var dealers: [Dealer] = []
         var unsavedPhotos = 0
         for item in items where item.selected {
-            guard let dealer = item.dealer else { continue }
+            // Two rows set to the same dealer are one chip: the first row's photo is the one kept.
+            guard let dealer = item.dealer, !dealers.contains(dealer) else { continue }
             context.setCollected(true, dealerID: dealer.id)
             do {
                 try app.photos.save(item.photo, for: dealer.id)
@@ -370,7 +364,7 @@ struct ChipScannerView: View {
                 unsavedPhotos += 1
                 print("Couldn't save the photo for \(dealer.id): \(error)")
             }
-            if !dealers.contains(dealer) { dealers.append(dealer) }
+            dealers.append(dealer)
         }
         try? context.save()
         added = dealers

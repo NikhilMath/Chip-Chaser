@@ -100,6 +100,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            #if DEBUG
+            .task {
+                if let path = DebugLaunch.importBackup { importBackup(.success(URL(filePath: path))) }
+            }
+            #endif
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 importBackup(result)
             }
@@ -108,14 +113,7 @@ struct SettingsView: View {
             } message: {
                 Text("This deletes every chip you've marked, your notes, and stores you added, on this iPhone and in iCloud. Automatic backups on this iPhone are kept, so you can restore them from Settings. Your chip photos are kept too.")
             }
-            .alert(message?.title ?? "", isPresented: Binding(
-                get: { message != nil },
-                set: { if !$0 { message = nil } }
-            ), presenting: message) { _ in
-                Button("OK") {}
-            } message: { message in
-                Text(message.body)
-            }
+            .alert($message)
         }
     }
 
@@ -157,10 +155,25 @@ struct SettingsView: View {
     }
 }
 
+/// A title and a sentence or two for a plain OK alert.
 struct AlertMessage: Identifiable {
     let id = UUID()
     let title: String
     let body: String
+}
+
+extension View {
+    /// Shows `message` as an alert with an OK button, and clears it when dismissed.
+    func alert(_ message: Binding<AlertMessage?>) -> some View {
+        alert(message.wrappedValue?.title ?? "", isPresented: Binding(
+            get: { message.wrappedValue != nil },
+            set: { if !$0 { message.wrappedValue = nil } }
+        ), presenting: message.wrappedValue) { _ in
+            Button("OK") {}
+        } message: { message in
+            Text(message.body)
+        }
+    }
 }
 
 extension Bundle {
