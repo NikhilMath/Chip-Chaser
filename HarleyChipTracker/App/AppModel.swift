@@ -6,6 +6,8 @@ import Observation
 final class AppModel {
     let directory: DealerDirectory
     let location: LocationProvider
+    /// Photos of the collector's chips, kept on this iPhone.
+    let photos: ChipPhotoStore
 
     var includeCanada: Bool {
         didSet { defaults.set(includeCanada, forKey: Keys.includeCanada) }
@@ -27,10 +29,12 @@ final class AppModel {
         static let includeShops = "track.includeShops"
     }
 
-    init(directory: DealerDirectory = .shared, defaults: UserDefaults = .standard, location: LocationProvider = LocationProvider()) {
+    init(directory: DealerDirectory = .shared, defaults: UserDefaults = .standard, location: LocationProvider = LocationProvider(),
+         photos: ChipPhotoStore = ChipPhotoStore()) {
         self.directory = directory
         self.defaults = defaults
         self.location = location
+        self.photos = photos
         defaults.register(defaults: [
             Keys.includeCanada: true,
             Keys.includeSatellites: true,

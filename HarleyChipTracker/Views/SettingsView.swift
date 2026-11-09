@@ -67,7 +67,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("Chip Chaser also saves a copy on this iPhone each day you use it, including one from before every update. Export a backup to keep your own copy in Files, or AirDrop it to a phone on a different Apple ID.")
+                    Text("Chip Chaser also saves a copy on this iPhone each day you use it, including one from before every update. Export a backup to keep your own copy in Files, or AirDrop it to a phone on a different Apple ID. Chip photos stay on this iPhone and come back with your iPhone's own iCloud Backup.")
                 }
 
                 Section {
@@ -95,7 +95,7 @@ struct SettingsView: View {
             .confirmationDialog("Reset your collection?", isPresented: $confirmingReset, titleVisibility: .visible) {
                 Button("Erase All Chips and Stores", role: .destructive, action: reset)
             } message: {
-                Text("This deletes every chip you've marked, your notes, and stores you added, on this iPhone and in iCloud. Automatic backups on this iPhone are kept, so you can restore them from Settings.")
+                Text("This deletes every chip you've marked, your notes, and stores you added, on this iPhone and in iCloud. Automatic backups on this iPhone are kept, so you can restore them from Settings. Your chip photos are kept too.")
             }
             .alert(message?.title ?? "", isPresented: Binding(
                 get: { message != nil },

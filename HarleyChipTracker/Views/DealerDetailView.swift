@@ -1,8 +1,9 @@
 import MapKit
+import PhotosUI
 import SwiftData
 import SwiftUI
 
-/// One location: mark the chip, count extras, keep notes, and get directions.
+/// One location: mark the chip, photograph it, count extras, keep notes, and get directions.
 struct DealerDetailView: View {
     let dealer: Dealer
 
@@ -13,6 +14,11 @@ struct DealerDetailView: View {
     @Query private var records: [ChipRecord]
     @Query private var customDealers: [CustomDealer]
     @State private var confirmingDelete = false
+    @State private var showingCamera = false
+    @State private var showingLibrary = false
+    @State private var libraryItem: PhotosPickerItem?
+    @State private var showingPhoto = false
+    @State private var confirmingRemovePhoto = false
 
     init(dealer: Dealer) {
         self.dealer = dealer
@@ -23,6 +29,7 @@ struct DealerDetailView: View {
     private var record: ChipRecord? { records.first }
     private var quantity: Int { record?.quantity ?? 0 }
     private var collected: Bool { quantity > 0 }
+    private var hasPhoto: Bool { app.photos.hasPhoto(for: dealer.id) }
 
     var body: some View {
         Form {
@@ -55,6 +62,8 @@ struct DealerDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                photoMenu
 
                 TextField("Notes: chip color, who you traded with…", text: notesBinding, axis: .vertical)
                     .lineLimit(2...6)
@@ -95,22 +104,102 @@ struct DealerDetailView: View {
         } message: {
             Text("This removes the store and its chip from your collection.")
         }
+        .confirmationDialog("Remove this chip's photo?", isPresented: $confirmingRemovePhoto, titleVisibility: .visible) {
+            Button("Remove Photo", role: .destructive) {
+                withAnimation { app.photos.removePhoto(for: dealer.id) }
+            }
+        } message: {
+            Text("The chip stays in your collection.")
+        }
+        .fullScreenCover(isPresented: $showingCamera) {
+            CameraPicker(allowsEditing: true) { image in
+                guard let upright = ChipRecognizer.normalized(image) else { return }
+                savePhoto(UIImage(cgImage: upright))
+            }
+            .ignoresSafeArea()
+        }
+        .photosPicker(isPresented: $showingLibrary, selection: $libraryItem, matching: .images)
+        .onChange(of: libraryItem) { _, item in
+            guard let item else { return }
+            libraryItem = nil
+            Task { await saveLibraryPhoto(item) }
+        }
+        .sheet(isPresented: $showingPhoto) {
+            ChipPhotoViewer(dealer: dealer)
+        }
+    }
+
+    /// Add, retake or remove the photo of the collector's chip.
+    private var photoMenu: some View {
+        Menu {
+            if CameraPicker.isAvailable {
+                Button {
+                    showingCamera = true
+                } label: {
+                    Label(hasPhoto ? "Retake Photo" : "Take Photo", systemImage: "camera")
+                }
+            }
+            Button {
+                showingLibrary = true
+            } label: {
+                Label("Choose from Library", systemImage: "photo.on.rectangle")
+            }
+            if hasPhoto {
+                Button(role: .destructive) {
+                    confirmingRemovePhoto = true
+                } label: {
+                    Label("Remove Photo", systemImage: "trash")
+                }
+            }
+        } label: {
+            Label(hasPhoto ? "Change Photo" : "Add a Photo of Your Chip", systemImage: hasPhoto ? "photo" : "camera")
+        }
+    }
+
+    private func saveLibraryPhoto(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let loaded = await Task.detached(priority: .userInitiated, operation: { ChipRecognizer.load(data) }).value
+        else { return }
+        savePhoto(await ChipRecognizer.subjectPhoto(of: loaded.image))
+    }
+
+    /// A photo of a chip means the collector has it, so a missing chip gets marked collected.
+    private func savePhoto(_ image: UIImage) {
+        do {
+            try app.photos.save(image, for: dealer.id)
+            withAnimation(.snappy) { context.setCollected(true, dealerID: dealer.id) }
+        } catch {
+            print("Couldn't save the photo for \(dealer.id): \(error)")
+        }
     }
 
     private var header: some View {
         Section {
             VStack(spacing: 10) {
-                Button {
-                    withAnimation(.snappy) { context.setCollected(!collected, dealerID: dealer.id) }
-                } label: {
-                    ChipIcon(collected: collected, size: 104)
-                        .shadow(color: .black.opacity(collected ? 0.25 : 0), radius: 8, y: 4)
-                        .scaleEffect(collected ? 1 : 0.94)
-                        .contentShape(Circle())
+                if hasPhoto {
+                    Button {
+                        showingPhoto = true
+                    } label: {
+                        ChipPhotoView(dealerID: dealer.id, collected: collected, cornerRadius: 22)
+                            .frame(width: 168, height: 168)
+                            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Photo of your chip")
+                    .accessibilityHint("Double-tap to view it full size")
+                } else {
+                    Button {
+                        withAnimation(.snappy) { context.setCollected(!collected, dealerID: dealer.id) }
+                    } label: {
+                        ChipIcon(collected: collected, size: 104)
+                            .shadow(color: .black.opacity(collected ? 0.25 : 0), radius: 8, y: 4)
+                            .scaleEffect(collected ? 1 : 0.94)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(collected ? "Collected" : "Missing")
+                    .accessibilityHint("Double-tap to toggle")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(collected ? "Collected" : "Missing")
-                .accessibilityHint("Double-tap to toggle")
                 Text(dealer.name)
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
@@ -137,10 +226,12 @@ struct DealerDetailView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                Text(collected ? "Tap the chip to mark it missing" : "Tap the chip when you get it")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 2)
+                if !hasPhoto {
+                    Text(collected ? "Tap the chip to mark it missing" : "Tap the chip when you get it")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)

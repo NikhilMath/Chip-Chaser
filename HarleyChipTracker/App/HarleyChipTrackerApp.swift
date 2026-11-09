@@ -3,12 +3,13 @@ import SwiftUI
 
 @main
 struct HarleyChipTrackerApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
     @State private var cloudAccount = CloudAccount()
     private let container: ModelContainer
 
     init() {
         container = Self.makeContainer()
+        _model = State(initialValue: AppModel(photos: Self.usesDemoData ? .demo : ChipPhotoStore()))
     }
 
     var body: some Scene {
@@ -44,11 +45,14 @@ struct HarleyChipTrackerApp: App {
 }
 
 #if DEBUG
-/// Debug-only launch arguments, e.g. `-demoData YES -debugTab progress -debugDealer hd-1069`.
+/// Debug-only launch arguments, e.g. `-demoData YES -debugTab collection -debugDealer hd-1069`.
 enum DebugLaunch {
     static var demoData: Bool { UserDefaults.standard.bool(forKey: "demoData") }
     static var initCloudKitSchema: Bool { UserDefaults.standard.bool(forKey: "initCloudKitSchema") }
     static var tab: AppTab? { UserDefaults.standard.string(forKey: "debugTab").flatMap(AppTab.init(rawValue:)) }
     static var dealerID: String? { UserDefaults.standard.string(forKey: "debugDealer") }
+    /// Opens Collection's photo scanner on this image file.
+    static var scanImage: String? { UserDefaults.standard.string(forKey: "debugScanImage") }
+    static var scanAutoAdd: Bool { UserDefaults.standard.bool(forKey: "debugScanAdd") }
 }
 #endif

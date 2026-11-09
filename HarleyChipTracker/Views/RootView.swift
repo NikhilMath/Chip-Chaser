@@ -13,6 +13,9 @@ struct RootView: View {
             Tab("Dealers", systemImage: "list.bullet", value: AppTab.dealers) {
                 DealerListView()
             }
+            Tab("Collection", systemImage: "circle.grid.2x2", value: AppTab.collection) {
+                ChipCollectionView()
+            }
             Tab("Progress", systemImage: "chart.pie", value: AppTab.progress) {
                 CollectionStatsView()
             }
@@ -30,7 +33,7 @@ struct RootView: View {
 }
 
 enum AppTab: String {
-    case map, dealers, progress, settings
+    case map, dealers, collection, progress, settings
 }
 
 #Preview {

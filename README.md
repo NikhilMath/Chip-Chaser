@@ -23,6 +23,8 @@ Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (fol
 
 - **Map first.** The app opens on the map. Orange chips are ones you have, grey ones you're missing. The map centers on your area so you can plan a ride around the chips you still need.
 - **Every location, built in.** 648 US and Canadian locations (556 dealerships, 26 satellite stores, 66 apparel & gift shops) from Harley-Davidson's dealer locator, including Alaska, Hawaii, Puerto Rico and Guam.
+- **Snap your chips.** Take a photo of a chip (or several laid out face up) and the app reads the dealer's name off each one, on the iPhone, and adds it to your collection with its photo. You check each match first, and can pick the dealer yourself if it can't read one.
+- **Your digital collection.** The Collection tab shows every chip you have, with its photo. Each dealer's page shows your chip's photo too; add, retake or remove it there.
 - **Mark chips in one tap.** Tap the chip next to a dealer, or swipe the row. Filter by All / Missing / Collected, search by name, city, state or ZIP, and sort by state, A to Z, or nearest to you.
 - **Progress.** Overall percentage, per-state progress (with a seal when you finish a state), recently collected, and counts of extras.
 - **Trading.** Track how many of each chip you own. Share your *missing list* or *extras for trade* as text to a collector group.
@@ -57,6 +59,18 @@ App updates keep the app's files, so a collection survives an update as long as 
 
 To check an update by hand: install the App Store version on a simulator, mark some chips, install the new build over it (`xcrun simctl install booted …`) and check that the count is unchanged.
 
+## Chip photos
+
+Photos never touch the SwiftData store or its iCloud schema, so they can't put a single chip at risk. They're JPEG files in `Library/Application Support/Chip Photos/` (`ChipPhotoStore.swift`), one per dealer ID plus a thumbnail. App updates keep them and the iPhone's own iCloud Backup includes them, but they don't sync between iPhones through the app's iCloud sync and aren't in exported backups. Photos are only deleted when the collector removes one: marking a chip missing, resetting the collection or deleting an added store leaves them alone, so a restored backup gets its photos back.
+
+Reading a chip runs on-device with Vision (`ChipRecognizer.swift`):
+
+1. `ChipCircles` finds the round chips with a Hough transform and unrolls each one's rim into a flat strip, both ways round, so a dealer name curving around the edge reads as one straight line.
+2. The whole photo is also read turned eight ways, for straight text on a chip lying at an angle.
+3. `ChipMatcher` scores every location by how much of its name and town turns up, weighting rare words above common ones, tolerating misread letters and cut-off words, and using where the photo was taken to break ties. Several chips in one photo are found one at a time: each match claims the text that identified it.
+
+`ChipScanTests` covers the matcher against the real dealer list and runs the recognizer on rendered chips (curved text, turned, two in one photo).
+
 ## Running it
 
 Requirements: Xcode 16 or later (built with Xcode 27.2), iOS 18 or later.
@@ -71,7 +85,7 @@ From the command line:
 xcodebuild test -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
 ```
 
-Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab dealers|progress|settings` (the app opens on the map otherwise) and `-debugDealer <id>` (with `-debugTab dealers`) launch arguments for screenshots. The App Store set in `docs/appstore/` is, in order: `-demoData YES`, then adding `-debugTab dealers`, `-debugTab progress`, and `-debugTab dealers -debugDealer hd-210`, with the simulator's location set to Milwaukee (43.0389, -87.9065) and the status bar at 9:41.
+Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab dealers|collection|progress|settings` (the app opens on the map otherwise), `-debugDealer <id>` (with `-debugTab dealers`), and `-debugScanImage <path>` (with `-debugTab collection`: opens Add from Photo on that image; add `-debugScanAdd YES` to add what it finds) launch arguments for screenshots and simulator checks. The App Store set in `docs/appstore/` is, in order: `-demoData YES`, then adding `-debugTab dealers`, `-debugTab progress`, and `-debugTab dealers -debugDealer hd-210`, with the simulator's location set to Milwaukee (43.0389, -87.9065) and the status bar at 9:41.
 
 ## Releasing to TestFlight
 
