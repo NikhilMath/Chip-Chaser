@@ -11,11 +11,11 @@ Chip Chaser is an iPhone app for Harley-Davidson chip collectors (it started out
 
 On iPhone Duo's outer screen (folded), iOS moves the tab bar to a rail along the right edge; no layout changes were needed:
 
-<img src="docs/appstore/duo/preview.png" alt="Map, Dealers, Progress and dealer detail on iPhone Duo, with the tab bar as a rail on the right">
+<img src="docs/appstore/duo/preview.png" alt="Map, Collection, Dealers, dealer detail and Progress on iPhone Duo, with the tab bar as a rail on the right">
 
 Unfolded, the app fills the big inner screen in landscape, with the same rail on the right:
 
-<img src="docs/appstore/duo-unfolded/preview.png" alt="Map, Dealers, Progress and dealer detail on the unfolded iPhone Duo's inner screen, in landscape">
+<img src="docs/appstore/duo-unfolded/preview.png" alt="Map, Collection, Dealers, dealer detail and Progress on the unfolded iPhone Duo's inner screen, in landscape">
 
 Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (folded) and [`docs/appstore/duo-unfolded/`](docs/appstore/duo-unfolded/), next to the App Store screenshots in [`docs/appstore/`](docs/appstore/).
 
@@ -86,7 +86,7 @@ From the command line:
 xcodebuild test -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
 ```
 
-Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab dealers|collection|progress|settings` (the app opens on the map otherwise), `-debugDealer <id>` (with `-debugTab dealers`), and `-debugScanImage <path>` (with `-debugTab collection`: opens Add from Photo on that image; add `-debugScanAdd YES` to add what it finds) launch arguments for screenshots and simulator checks. The App Store set in `docs/appstore/` is, in order: `-demoData YES`, then adding `-debugTab dealers`, `-debugTab progress`, and `-debugTab dealers -debugDealer hd-210`, with the simulator's location set to Milwaukee (43.0389, -87.9065) and the status bar at 9:41.
+Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab dealers|collection|progress|settings` (the app opens on the map otherwise), `-debugDealer <id>` (with `-debugTab dealers`), and `-debugScanImage <path>` (with `-debugTab collection`: opens Add from Photo on that image; add `-debugScanAdd YES` to add what it finds) launch arguments for screenshots and simulator checks. The App Store set in `docs/appstore/` is, in order: `-demoData YES`, then adding `-debugTab collection`, `-debugTab dealers`, `-debugTab dealers -debugDealer hd-210`, and `-debugTab progress`, with the simulator's location set to Milwaukee (43.0389, -87.9065) and the status bar at 9:41. `Tools/capture_screenshots.sh <simulator> <out dir> [display]` takes the whole set. It fills the demo collection's photos with original stand-in chips drawn by `Tools/make_demo_chip_photos.swift` (not any real chip design).
 
 ## Releasing to TestFlight
 
