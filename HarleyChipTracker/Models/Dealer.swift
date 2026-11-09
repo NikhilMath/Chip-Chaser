@@ -131,15 +131,17 @@ nonisolated struct Dealer: Identifiable, Hashable, Codable, Sendable {
         return components?.url
     }
 
-    /// Words a search can match: name, city, state code and name, ZIP.
+    /// Words a search can match: name, city, state code and name, ZIP. Every word typed has to
+    /// match something, so "milwaukee wi" or "bartels marina" narrow the list instead of emptying it.
     func matches(search text: String) -> Bool {
-        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return true }
-        return name.localizedStandardContains(query)
-            || city.localizedStandardContains(query)
-            || region.caseInsensitiveCompare(query) == .orderedSame
-            || regionName.localizedStandardContains(query)
-            || (postalCode?.hasPrefix(query) ?? false)
+        let words = text.split { $0.isWhitespace || $0 == "," }
+        return words.allSatisfy { word in
+            name.localizedStandardContains(word)
+                || city.localizedStandardContains(word)
+                || region.caseInsensitiveCompare(word) == .orderedSame
+                || regionName.localizedStandardContains(word)
+                || (postalCode?.hasPrefix(word) ?? false)
+        }
     }
 
     /// "53202-1234" stays as is, but the feed's "99840-0000" placeholder drops its "-0000".

@@ -20,6 +20,9 @@ struct DealerDetailView: View {
     @State private var showingPhoto = false
     @State private var confirmingRemovePhoto = false
     @State private var confirmingUnmark = false
+    @State private var photoProblem: AlertMessage?
+    /// A photo picked from the library is being fetched and trimmed.
+    @State private var loadingPhoto = false
 
     init(dealer: Dealer) {
         self.dealer = dealer
@@ -121,7 +124,10 @@ struct DealerDetailView: View {
         }
         .fullScreenCover(isPresented: $showingCamera) {
             CameraPicker(allowsEditing: true) { image in
-                guard let upright = ChipRecognizer.normalized(image) else { return }
+                guard let upright = ChipRecognizer.normalized(image) else {
+                    photoProblem = AlertMessage(title: "Couldn't Use That Photo", body: "Try taking it again.")
+                    return
+                }
                 savePhoto(UIImage(cgImage: upright))
             }
             .ignoresSafeArea()
@@ -131,6 +137,14 @@ struct DealerDetailView: View {
             guard let item else { return }
             libraryItem = nil
             Task { await saveLibraryPhoto(item) }
+        }
+        .alert(photoProblem?.title ?? "", isPresented: Binding(
+            get: { photoProblem != nil },
+            set: { if !$0 { photoProblem = nil } }
+        ), presenting: photoProblem) { _ in
+            Button("OK") {}
+        } message: { problem in
+            Text(problem.body)
         }
         .sheet(isPresented: $showingPhoto) {
             ChipPhotoViewer(dealer: dealer)
@@ -160,14 +174,28 @@ struct DealerDetailView: View {
                 }
             }
         } label: {
-            Label(hasPhoto ? "Change Photo" : "Add a Photo of Your Chip", systemImage: hasPhoto ? "photo" : "camera")
+            if loadingPhoto {
+                Label {
+                    Text("Adding Photo…")
+                } icon: {
+                    ProgressView()
+                }
+            } else {
+                Label(hasPhoto ? "Change Photo" : "Add a Photo of Your Chip", systemImage: hasPhoto ? "photo" : "camera")
+            }
         }
+        .disabled(loadingPhoto)
     }
 
     private func saveLibraryPhoto(_ item: PhotosPickerItem) async {
+        loadingPhoto = true
+        defer { loadingPhoto = false }
         guard let data = try? await item.loadTransferable(type: Data.self),
               let loaded = await Task.detached(priority: .userInitiated, operation: { ChipRecognizer.load(data) }).value
-        else { return }
+        else {
+            photoProblem = AlertMessage(title: "Couldn't Open That Photo", body: "Try another photo, or take a new one.")
+            return
+        }
         savePhoto(await ChipRecognizer.subjectPhoto(of: loaded.image))
     }
 
@@ -178,6 +206,8 @@ struct DealerDetailView: View {
             withAnimation(.snappy) { context.setCollected(true, dealerID: dealer.id) }
         } catch {
             print("Couldn't save the photo for \(dealer.id): \(error)")
+            photoProblem = AlertMessage(title: "Couldn't Save the Photo",
+                                        body: "Your iPhone may be low on storage. \(error.localizedDescription)")
         }
     }
 

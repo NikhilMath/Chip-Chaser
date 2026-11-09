@@ -19,9 +19,12 @@ struct ChipScannerView: View {
     @State private var showingCamera = false
     @State private var libraryItem: PhotosPickerItem?
     @State private var choosingFor: ScanItem.ID?
+    @State private var problem: AlertMessage?
 
     enum Phase {
         case start
+        /// A picked photo is being fetched (from iCloud, perhaps) before it can be read.
+        case opening
         case reading(UIImage)
         case review(UIImage)
         case done
@@ -32,6 +35,9 @@ struct ChipScannerView: View {
             Group {
                 switch phase {
                 case .start: startView
+                case .opening:
+                    ProgressView("Opening photo…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .reading(let image): readingView(image)
                 case .review(let image): reviewView(image)
                 case .done: doneView
@@ -69,6 +75,14 @@ struct ChipScannerView: View {
                     choosingFor = nil
                 }
             }
+        }
+        .alert(problem?.title ?? "", isPresented: Binding(
+            get: { problem != nil },
+            set: { if !$0 { problem = nil } }
+        ), presenting: problem) { _ in
+            Button("OK") {}
+        } message: { problem in
+            Text(problem.body)
         }
         .task {
             app.location.refresh()
@@ -275,17 +289,24 @@ struct ChipScannerView: View {
         app.directory.dealers + app.directory.closedDealers + customDealers.map(\.asDealer)
     }
 
+    private func couldNotOpen() {
+        withAnimation { phase = .start }
+        problem = AlertMessage(title: "Couldn't Open That Photo",
+                               body: "Try another photo, or take a new one.")
+    }
+
     private func readCameraPhoto(_ image: UIImage) async {
-        guard let upright = ChipRecognizer.normalized(image) else { return }
+        guard let upright = ChipRecognizer.normalized(image) else { return couldNotOpen() }
         // A photo just taken was taken here; use the fix if it's recent.
         let here = app.location.location.flatMap { $0.timestamp.timeIntervalSinceNow > -1_800 ? $0 : nil }
         await read(upright, location: here)
     }
 
     private func readLibraryPhoto(_ item: PhotosPickerItem) async {
-        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+        withAnimation { phase = .opening }
+        guard let data = try? await item.loadTransferable(type: Data.self) else { return couldNotOpen() }
         let loaded = await Task.detached(priority: .userInitiated) { ChipRecognizer.load(data) }.value
-        guard let loaded else { return }
+        guard let loaded else { return couldNotOpen() }
         await read(loaded.image, location: loaded.location)
     }
 
@@ -339,12 +360,14 @@ struct ChipScannerView: View {
 
     private func addSelected() {
         var dealers: [Dealer] = []
+        var unsavedPhotos = 0
         for item in items where item.selected {
             guard let dealer = item.dealer else { continue }
             context.setCollected(true, dealerID: dealer.id)
             do {
                 try app.photos.save(item.photo, for: dealer.id)
             } catch {
+                unsavedPhotos += 1
                 print("Couldn't save the photo for \(dealer.id): \(error)")
             }
             if !dealers.contains(dealer) { dealers.append(dealer) }
@@ -352,6 +375,10 @@ struct ChipScannerView: View {
         try? context.save()
         added = dealers
         withAnimation { phase = .done }
+        if unsavedPhotos > 0 {
+            problem = AlertMessage(title: "Couldn't Save Every Photo",
+                                   body: "Your chips were added, but \(unsavedPhotos == 1 ? "1 photo" : "\(unsavedPhotos) photos") couldn't be saved. Your iPhone may be low on storage. You can add a photo from the chip's page.")
+        }
     }
 
     private func reset() {

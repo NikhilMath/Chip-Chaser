@@ -66,6 +66,39 @@ final class ChipPhotoStore {
         revisions[dealerID] = nextRevision
     }
 
+    /// Adds photos from an imported backup for locations that don't have one here; a photo
+    /// already on this iPhone is never replaced. The files are written off the main thread,
+    /// since a backup can hold hundreds. Returns how many were added.
+    func importPhotos(_ photos: [String: Data]) async -> Int {
+        let directory = directory
+        let files = photos
+            .filter { !hasPhoto(for: $0.key) }
+            .map { (id: $0.key, data: $0.value, photo: photoURL(for: $0.key), thumbnail: thumbnailURL(for: $0.key)) }
+        guard !files.isEmpty else { return 0 }
+
+        let saved = await Task.detached(priority: .userInitiated) { () -> [String] in
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            var saved: [String] = []
+            for file in files {
+                guard let image = UIImage(data: file.data),
+                      let thumbnail = Self.resized(image, maxSide: 360).jpegData(compressionQuality: 0.8) else { continue }
+                // Photos this app exported are already the right size; anything bigger is scaled down.
+                let fits = max(image.size.width * image.scale, image.size.height * image.scale) <= 1_200
+                guard let photo = fits ? file.data : Self.resized(image, maxSide: 1_200).jpegData(compressionQuality: 0.85),
+                      (try? photo.write(to: file.photo, options: .atomic)) != nil,
+                      (try? thumbnail.write(to: file.thumbnail, options: .atomic)) != nil else { continue }
+                saved.append(file.id)
+            }
+            return saved
+        }.value
+
+        for id in saved {
+            nextRevision += 1
+            revisions[id] = nextRevision
+        }
+        return saved.count
+    }
+
     /// Deletes the photo for a location. Only called when the collector asks.
     func removePhoto(for dealerID: String) {
         try? FileManager.default.removeItem(at: photoURL(for: dealerID))
@@ -119,7 +152,7 @@ final class ChipPhotoStore {
         return String(name.dropLast(photoSuffix.count)).removingPercentEncoding
     }
 
-    private static func resized(_ image: UIImage, maxSide: CGFloat) -> UIImage {
+    nonisolated private static func resized(_ image: UIImage, maxSide: CGFloat) -> UIImage {
         let pixelSize = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
         let scale = min(1, maxSide / max(pixelSize.width, pixelSize.height, 1))
         let size = CGSize(width: (pixelSize.width * scale).rounded(), height: (pixelSize.height * scale).rounded())

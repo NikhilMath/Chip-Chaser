@@ -18,10 +18,14 @@ final class LocationProvider {
             manager.requestWhenInUseAuthorization()
         }
         isLocating = true
+        let started = Date.now
         task = Task { [weak self] in
             do {
                 for try await update in CLLocationUpdate.liveUpdates() {
                     guard let self else { return }
+                    // Indoors a sharp fix may never come: settle for what there is rather than
+                    // keep the GPS running for as long as the app is open.
+                    if Date.now.timeIntervalSince(started) > 30 { break }
                     if update.authorizationDenied || update.authorizationDeniedGlobally {
                         self.isDenied = true
                         break

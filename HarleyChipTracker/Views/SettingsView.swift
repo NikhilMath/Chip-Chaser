@@ -11,6 +11,8 @@ struct SettingsView: View {
     @Query(sort: \CustomDealer.createdAt) private var customDealers: [CustomDealer]
 
     @State private var importing = false
+    /// A backup is being read and its photos saved.
+    @State private var importInProgress = false
     @State private var confirmingReset = false
     @State private var message: AlertMessage?
 
@@ -89,6 +91,14 @@ struct SettingsView: View {
                 }
             }
             .toggleStyle(SwitchToggleStyle(tint: Color.accentColor))
+            .disabled(importInProgress)
+            .overlay {
+                if importInProgress {
+                    ProgressView("Importing Backup…")
+                        .padding(24)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
             .navigationTitle("Settings")
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 importBackup(result)
@@ -109,23 +119,32 @@ struct SettingsView: View {
         }
     }
 
+    /// Reads the file and saves its photos off the main thread: a backup with photos can be big.
     private func importBackup(_ result: Result<URL, Error>) {
-        do {
-            let url = try result.get()
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            let data = try Data(contentsOf: url)
-            let backup = try CollectionBackup.decoder.decode(CollectionBackup.self, from: data)
-            let restored = try backup.restore(into: context)
-            let photos = backup.restorePhotos(into: app.photos)
-            var body = "Restored \(restored) collected chips and \(backup.customStores.count) added stores."
-            if photos > 0 { body += photos == 1 ? " Added 1 chip photo." : " Added \(photos) chip photos." }
-            body += " Nothing you've marked since was changed."
-            message = AlertMessage(title: "Backup Imported", body: body)
-        } catch is DecodingError {
-            message = AlertMessage(title: "Couldn't Import", body: "That file isn't a Chip Chaser backup.")
-        } catch {
-            message = AlertMessage(title: "Couldn't Import", body: error.localizedDescription)
+        importInProgress = true
+        Task {
+            defer { importInProgress = false }
+            do {
+                let url = try result.get()
+                let backup = try await Task.detached(priority: .userInitiated) {
+                    let scoped = url.startAccessingSecurityScopedResource()
+                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                    let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                    return try CollectionBackup.decoder.decode(CollectionBackup.self, from: data)
+                }.value
+                let restored = try backup.restore(into: context)
+                let photos = await backup.restorePhotos(into: app.photos)
+                var body = "Restored \(restored) collected chips and \(backup.customStores.count) added stores."
+                if photos > 0 { body += photos == 1 ? " Added 1 chip photo." : " Added \(photos) chip photos." }
+                body += " Nothing you've marked since was changed."
+                message = AlertMessage(title: "Backup Imported", body: body)
+            } catch is DecodingError {
+                message = AlertMessage(title: "Couldn't Import", body: "That file isn't a Chip Chaser backup.")
+            } catch let error as CocoaError where error.code == .userCancelled {
+                // Closed the file picker: nothing to say.
+            } catch {
+                message = AlertMessage(title: "Couldn't Import", body: error.localizedDescription)
+            }
         }
     }
 

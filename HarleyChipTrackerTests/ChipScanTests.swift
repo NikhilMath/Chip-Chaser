@@ -210,7 +210,7 @@ struct ChipPhotoStoreTests {
         }
     }
 
-    @Test func exportedBackupCarriesPhotosToAnotherPhone() throws {
+    @Test func exportedBackupCarriesPhotosToAnotherPhone() async throws {
         let directory = temporaryDirectory(), other = temporaryDirectory()
         defer {
             try? FileManager.default.removeItem(at: directory)
@@ -230,14 +230,16 @@ struct ChipPhotoStoreTests {
         let second = ChipPhotoStore(directory: other)
         try second.save(sampleImage(), for: "hd-2")
         let revision = second.revision(for: "hd-2")
-        #expect(decoded.restorePhotos(into: second) == 1)
+        #expect(await decoded.restorePhotos(into: second) == 1)
         #expect(second.hasPhoto(for: "hd-1"))
+        #expect(await second.thumbnail(for: "hd-1") != nil)
+        #expect(ChipPhotoStore(directory: other).count == 2, "imported photos are on disk")
         #expect(second.revision(for: "hd-2") == revision)
 
         // Backups without photos (automatic ones, or from before 1.4) still read.
         let plain = try CollectionBackup.decoder.decode(CollectionBackup.self, from: CollectionBackup.encoder.encode(backup))
         #expect(plain.photos == nil)
-        #expect(plain.restorePhotos(into: second) == 0)
+        #expect(await plain.restorePhotos(into: second) == 0)
     }
 
     @Test func savesReopensAndRemoves() async throws {

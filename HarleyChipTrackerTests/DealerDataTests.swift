@@ -58,6 +58,10 @@ struct DealerTests {
         #expect(dealer.matches(search: "South Dakota"))
         #expect(dealer.matches(search: "5778"))
         #expect(dealer.matches(search: "  sturgis  "), "surrounding whitespace is ignored")
+        #expect(dealer.matches(search: "sturgis sd"), "several words each match something")
+        #expect(dealer.matches(search: "Sturgis, South Dakota"))
+        #expect(dealer.matches(search: "test 57785"))
+        #expect(!dealer.matches(search: "sturgis wi"), "every word has to match")
         #expect(!dealer.matches(search: "Milwaukee"))
         #expect(!dealer.matches(search: "WI"))
     }

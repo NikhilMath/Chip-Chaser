@@ -1,7 +1,6 @@
 import CoreTransferable
 import Foundation
 import SwiftData
-import UIKit
 import UniformTypeIdentifiers
 
 /// A JSON backup of the collection, for moving to a new phone or keeping a copy.
@@ -131,12 +130,7 @@ extension CollectionBackup {
     /// here is never replaced. Returns how many were added.
     @MainActor
     @discardableResult
-    func restorePhotos(into store: ChipPhotoStore) -> Int {
-        var added = 0
-        for (dealerID, data) in photos ?? [:] where !store.hasPhoto(for: dealerID) {
-            guard let image = UIImage(data: data), (try? store.save(image, for: dealerID)) != nil else { continue }
-            added += 1
-        }
-        return added
+    func restorePhotos(into store: ChipPhotoStore) async -> Int {
+        await store.importPhotos(photos ?? [:])
     }
 }
