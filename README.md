@@ -21,18 +21,18 @@ Full-size Duo screenshots are in [`docs/appstore/duo/`](docs/appstore/duo/) (fol
 
 ## Features
 
-- **Map first.** The app opens on the map. Orange chips are ones you have, grey ones you're missing. The map centers on your area so you can plan a ride around the chips you still need.
+- **Map first.** The app opens on the map. Orange chips are ones you have, grey ones you're missing. The map centers on your area so you can plan a ride around the chips you still need. Stores too close together to tell apart at the current zoom share one numbered mark; tap it to zoom in.
 - **Every location, built in.** 648 US and Canadian locations (556 dealerships, 26 satellite stores, 66 apparel & gift shops) from Harley-Davidson's dealer locator, including Alaska, Hawaii, Puerto Rico and Guam.
 - **Snap your chips.** Take a photo of a chip (or several laid out face up) and the app reads the dealer's name off each one, on the iPhone, and adds it to your collection with its photo. You check each match first, and can pick the dealer yourself if it can't read one.
 - **Your digital collection.** The Collection tab shows every chip you have, with its photo. Each dealer's page shows your chip's photo too; add, retake or remove it there.
 - **Store hours.** Each location shows whether it's open right now ("Open now · closes 6 PM", "Closed · opens 9 AM Tue") and its weekly hours, read by the store's own clock, so a dealer two time zones away shows its local time. Lists mark each store open or closed now.
-- **Mark chips in one tap.** Tap the chip next to a dealer, or swipe the row. Filter by All / Missing / Collected, search by name, city, state or ZIP, and sort by state, A to Z, or nearest to you.
-- **Progress.** Overall percentage, per-state progress (with a seal when you finish a state), recently collected, and counts of extras.
+- **Mark chips in one tap.** Tap the chip next to a dealer, or swipe the row. Un-marking a chip with a tap asks first, since it clears the chip's date and count. Filter by All / Missing / Collected, search by name, city, state or ZIP, and sort by state, A to Z, or nearest to you.
+- **Progress.** Overall percentage, the closest chips you still need, per-state progress (with a seal when you finish a state), recently collected, and counts of extras.
 - **Trading.** Track how many of each chip you own. Share your *missing list* or *extras for trade* as text to a collector group.
 - **Your own stores.** Add a dealer that's new, closed, or overseas; it counts like any other.
 - **Choose what counts.** Turn Canadian locations, satellite stores or apparel shops on or off in Settings.
 - **Saved to your Apple ID.** Your collection syncs through your own iCloud account to every iPhone signed in with the same Apple ID. There's no separate sign-in; Settings shows whether iCloud is on.
-- **Backup.** Export your collection as a JSON file (Files, AirDrop) and import it on any phone. The app also keeps automatic backups on the iPhone, one per day and per app version, so there's always a copy from before an update (Settings → Automatic Backups).
+- **Backup.** Export your collection, chip photos included, as a JSON file (Files, AirDrop) and import it on any phone. Importing or restoring only ever adds: a chip in both keeps the higher count, the earlier date and both notes. The app also keeps automatic backups on the iPhone, one per day and per app version, so there's always a copy from before an update (Settings → Automatic Backups).
 
 ## iCloud sync
 
@@ -62,7 +62,7 @@ To check an update by hand: install the App Store version on a simulator, mark s
 
 ## Chip photos
 
-Photos never touch the SwiftData store or its iCloud schema, so they can't put a single chip at risk. They're JPEG files in `Library/Application Support/Chip Photos/` (`ChipPhotoStore.swift`), one per dealer ID plus a thumbnail. App updates keep them and the iPhone's own iCloud Backup includes them, but they don't sync between iPhones through the app's iCloud sync and aren't in exported backups. Photos are only deleted when the collector removes one: marking a chip missing, resetting the collection or deleting an added store leaves them alone, so a restored backup gets its photos back.
+Photos never touch the SwiftData store or its iCloud schema, so they can't put a single chip at risk. They're JPEG files in `Library/Application Support/Chip Photos/` (`ChipPhotoStore.swift`), one per dealer ID plus a thumbnail. App updates keep them and the iPhone's own iCloud Backup includes them. They don't sync between iPhones through the app's iCloud sync, and the automatic daily backups leave them out, but a backup exported from Settings carries them (`CollectionExport`), and importing it adds the photos a phone doesn't have yet. Photos are only deleted when the collector removes one: marking a chip missing, resetting the collection or deleting an added store leaves them alone, so a restored backup gets its photos back.
 
 Reading a chip runs on-device with Vision (`ChipRecognizer.swift`):
 
@@ -93,10 +93,11 @@ Debug builds accept `-demoData YES` (in-memory sample collection), `-debugTab de
 Releases happen on GitHub. Every push to `main` that changes the app (`HarleyChipTracker/`, `Config/` or the Xcode project) runs the [Release workflow](.github/workflows/release.yml) on GitHub's Xcode 27 runner. It:
 
 1. picks the next build number: one more than the highest `v*-build<N>` tag (`Tools/next-build-number.sh`);
-2. archives the app with that build number, using an App Store Connect API key so Xcode can handle signing in the cloud;
-3. checks that the iCloud entitlement made it into the archive;
-4. uploads the build to App Store Connect;
-5. tags the commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Chip-Chaser/releases) listing the commits since the last build (`Tools/github-release.sh`).
+2. runs the tests on a simulator, and stops if any fail;
+3. archives the app with that build number, using an App Store Connect API key so Xcode can handle signing in the cloud;
+4. checks that the iCloud entitlement made it into the archive;
+5. uploads the build to App Store Connect;
+6. tags the commit `v<version>-build<N>` and publishes a [GitHub Release](https://github.com/NikhilMath/Chip-Chaser/releases) listing the commits since the last build (`Tools/github-release.sh`).
 
 Changes to docs, tests and tools don't trigger a build. To release by hand, open **Actions → Release → Run workflow**, or run `gh workflow run release.yml`. When Apple finishes processing a build, add it to a group in App Store Connect → TestFlight. The **Friends** group has the public link, and Apple has to review its builds.
 
@@ -139,6 +140,10 @@ python3 Tools/update_dealers.py
 
 The script runs about 150 radius searches against Harley-Davidson's public dealer locator, de-duplicates them, and rewrites `HarleyChipTracker/Resources/dealers.json`, keeping only the fields the app uses. That includes each location's opening hours (seven strings, Sunday first: `"closed"` or `"09:00-18:00"`) and its IANA time zone, which `timezonefinder` works out from the coordinates so split states like South Dakota or Tennessee come out right. Without `timezonefinder`, time zones carry over from the previous list. A few seasonal shops list every day as closed off-season; the script leaves their hours out rather than show them as closed for good. Chip records are keyed by Harley-Davidson's dealer ID. Locations that have left the locator stay in the file, marked `"closed"` with the date they went missing, so a refresh never takes a chip out of anyone's collection. New IDs are added to `HarleyChipTrackerTests/Fixtures/known-dealer-ids.txt`; commit both files together.
 
+### Between app updates
+
+The app also refreshes the list by itself (`DealerListUpdate.swift`): about once a day it downloads this repository's `dealers.json` from `main` and, if it's newer than the list it has and still contains every location that build knows, saves it in `Application Support/Dealer List/` for the next launch. A file that can't be read, is older, or has lost a location is thrown away, and the bundled list is always the fallback. So committing a refreshed `dealers.json` reaches every installed copy within a day or so, with no data about the collector sent anywhere.
+
 ## Project layout
 
 ```
@@ -146,7 +151,7 @@ HarleyChipTracker/
   App/          App entry point and AppModel (tracking settings, location)
   Models/       Dealer, ChipRecord / CustomDealer (SwiftData), region names
   Data/         Bundled directory loader, collection status, backup, share text
-  Services/     One-shot location provider, iCloud sync and account status
+  Services/     One-shot location provider, iCloud sync and account status, dealer list refresh
   Views/        Dealers, Map, Progress, Settings, detail and add-store screens
   Resources/    dealers.json
 HarleyChipTrackerTests/   Swift Testing suite; Fixtures/ holds a 1.0 collection and every shipped dealer ID

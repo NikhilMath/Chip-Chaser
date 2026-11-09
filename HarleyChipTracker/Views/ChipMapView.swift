@@ -10,8 +10,11 @@ struct ChipMapView: View {
 
     @State private var position: MapCameraPosition = .region(ChipMapView.centralUS)
     @State private var selectedID: String?
-    @State private var filter: ChipFilter = .all
+    @AppStorage("map.filter") private var filter: ChipFilter = .all
     @State private var centeredOnUser = false
+    /// What the map shows right now, for grouping pins that would overlap.
+    @State private var visibleRegion = ChipMapView.centralUS
+    @State private var mapSize = CGSize(width: 390, height: 760)
 
     /// Where the map starts before a location fix arrives.
     static let centralUS = MKCoordinateRegion(
@@ -26,22 +29,35 @@ struct ChipMapView: View {
             $0.coordinate != nil && filter.includes(collected: status.isCollected($0.id))
         }
 
+        let marks = MapCluster.make(pins, status: status, in: visibleRegion, mapSize: mapSize, keepSeparate: selectedID)
+
         Map(position: $position, selection: $selectedID) {
             UserAnnotation()
-            ForEach(pins) { dealer in
-                if let coordinate = dealer.coordinate {
-                    let collected = status.isCollected(dealer.id)
+            ForEach(marks) { mark in
+                if let dealer = mark.single {
                     let selected = selectedID == dealer.id
-                    Annotation(dealer.name, coordinate: coordinate, anchor: .center) {
-                        ChipIcon(collected: collected, size: selected ? 34 : 22, opaque: true)
+                    Annotation(dealer.name, coordinate: mark.coordinate, anchor: .center) {
+                        ChipIcon(collected: mark.collected > 0, size: selected ? 34 : 22, opaque: true)
                             .shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
                             .animation(.snappy, value: selected)
                     }
                     .annotationTitles(.hidden)
                     .tag(dealer.id)
+                } else {
+                    Annotation("\(mark.dealers.count) locations", coordinate: mark.coordinate, anchor: .center) {
+                        ClusterBubble(count: mark.dealers.count, collected: mark.collected)
+                            .onTapGesture {
+                                withAnimation { position = .region(mark.region) }
+                            }
+                    }
+                    .annotationTitles(.hidden)
                 }
             }
         }
+        .onMapCameraChange(frequency: .onEnd) { context in
+            visibleRegion = context.region
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { mapSize = $0 }
         .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .mapControls {
             MapUserLocationButton()
@@ -93,6 +109,35 @@ struct ChipMapView: View {
             get: { selectedID.flatMap { id in dealers.first { $0.id == id } } },
             set: { selectedID = $0?.id }
         )
+    }
+}
+
+/// Several locations too close together to show apart: how many, and how many are collected.
+private struct ClusterBubble: View {
+    let count: Int
+    let collected: Int
+
+    var body: some View {
+        let size: CGFloat = count >= 10 ? 40 : 34
+        ZStack {
+            Circle().fill(Color(.systemGray))
+            Circle().strokeBorder(Color.white.opacity(0.92), lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: Double(collected) / Double(max(count, 1)))
+                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 3, lineCap: .butt))
+                .rotationEffect(.degrees(-90))
+                .padding(1.5)
+            Text("\(count)")
+                .font(.system(size: 14, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
+        .contentShape(Circle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(count) locations, \(collected) collected")
+        .accessibilityHint("Double-tap to zoom in")
+        .accessibilityAddTraits(.isButton)
     }
 }
 

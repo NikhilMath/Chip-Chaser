@@ -19,6 +19,9 @@ struct HarleyChipTrackerApp: App {
                 .environment(cloudAccount)
                 .cloudSyncMaintenance(account: cloudAccount)
                 .automaticBackups(enabled: !Self.usesDemoData)
+                .task {
+                    if !Self.usesDemoData { await DealerListUpdate.refreshIfDue() }
+                }
         }
         .modelContainer(container)
     }

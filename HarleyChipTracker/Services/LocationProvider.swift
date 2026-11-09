@@ -29,7 +29,9 @@ final class LocationProvider {
                     if let location = update.location {
                         self.isDenied = false
                         self.location = location
-                        if location.horizontalAccuracy >= 0 && location.horizontalAccuracy < 1_000 { break }
+                        // A fix remembered from before the ride doesn't count as fresh.
+                        if location.horizontalAccuracy >= 0 && location.horizontalAccuracy < 1_000
+                            && location.timestamp.timeIntervalSinceNow > -120 { break }
                     }
                 }
             } catch {
@@ -37,6 +39,14 @@ final class LocationProvider {
             }
             self?.isLocating = false
             self?.task = nil
+        }
+    }
+
+    /// Takes a fresh fix without ever bringing up the permission prompt.
+    func refreshIfAllowed() {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways: refresh()
+        default: break
         }
     }
 

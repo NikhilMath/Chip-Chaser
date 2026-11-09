@@ -31,8 +31,8 @@ struct DealerListView: View {
     @Query(sort: \CustomDealer.createdAt) private var customDealers: [CustomDealer]
 
     @State private var searchText = ""
-    @State private var filter: ChipFilter = .all
-    @State private var sort: DealerSort = .region
+    @AppStorage("dealers.filter") private var filter: ChipFilter = .all
+    @AppStorage("dealers.sort") private var sort: DealerSort = .region
     @State private var showingAddStore = false
     @State private var path: [Dealer] = []
 
@@ -117,6 +117,7 @@ struct DealerListView: View {
                                  collected: totals[group.key]?.collected ?? 0,
                                  total: totals[group.key]?.total ?? 0)
                 }
+                .regionIndexLabel(group.key.code)
             }
 
         case .name:
@@ -184,6 +185,18 @@ struct DealerListView: View {
             totals[dealer.regionKey] = entry
         }
         return totals
+    }
+}
+
+private extension View {
+    /// The state's code in the list's side index (iOS 26 and later), for jumping down 60 sections.
+    @ViewBuilder
+    func regionIndexLabel(_ code: String) -> some View {
+        if #available(iOS 26.0, *), !code.isEmpty {
+            sectionIndexLabel(code)
+        } else {
+            self
+        }
     }
 }
 

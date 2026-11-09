@@ -13,6 +13,16 @@ struct CollectionStatsView: View {
         let collected = status.collectedCount(in: tracked)
         let groups = RegionGroup.make(from: tracked)
         let completeStates = groups.filter { group in group.dealers.allSatisfy { status.isCollected($0.id) } }.count
+        let startedStates = groups.filter { group in group.dealers.contains { status.isCollected($0.id) } }.count
+        // The closest chips still to get, once the rider's location is known.
+        let nearestMissing: [(Dealer, Double)] = app.location.location.map { here in
+            tracked
+                .filter { !status.isCollected($0.id) && !$0.isClosed }
+                .compactMap { dealer in dealer.location.map { (dealer, here.distance(from: $0)) } }
+                .sorted { $0.1 < $1.1 }
+                .prefix(3)
+                .map { $0 }
+        } ?? []
         let trackedIDs = Set(tracked.map(\.id))
         let recent = records
             .filter { $0.isCollected && trackedIDs.contains($0.dealerID) }
@@ -34,10 +44,30 @@ struct CollectionStatsView: View {
                         StatTile(value: tracked.count - collected, label: "Missing", symbol: "circle.dashed")
                         StatTile(value: status.extrasCount(in: tracked), label: "Extras to Trade", symbol: "arrow.left.arrow.right")
                         StatTile(value: completeStates, label: "States Complete", symbol: "checkmark.seal.fill")
-                        StatTile(value: groups.count, label: "States & Provinces", symbol: "map")
+                        StatTile(value: startedStates, label: "States Started", symbol: "map")
                     }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
+                }
+
+                if !nearestMissing.isEmpty {
+                    Section("Closest Chips You Need") {
+                        ForEach(nearestMissing, id: \.0.id) { dealer, distance in
+                            NavigationLink(value: dealer) {
+                                HStack(spacing: 12) {
+                                    ChipIcon(collected: false, size: 30)
+                                    VStack(alignment: .leading) {
+                                        Text(dealer.name).font(.subheadline.weight(.semibold))
+                                        Text(dealer.cityLine).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(distance.roadDistanceText)
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if !recent.isEmpty {
@@ -86,6 +116,7 @@ struct CollectionStatsView: View {
                     }
                 }
             }
+            .task { app.location.refreshIfAllowed() }
             .navigationDestination(for: RegionKey.self) { key in
                 RegionDealersView(regionKey: key)
             }

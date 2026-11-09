@@ -29,7 +29,7 @@ struct ChipCollectionView: View {
     @Query private var records: [ChipRecord]
     @Query private var customDealers: [CustomDealer]
 
-    @State private var sort = CollectionSort.recent
+    @AppStorage("collection.sort") private var sort = CollectionSort.recent
     @State private var searchText = ""
     @State private var scanning = false
 

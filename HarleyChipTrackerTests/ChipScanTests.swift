@@ -210,6 +210,36 @@ struct ChipPhotoStoreTests {
         }
     }
 
+    @Test func exportedBackupCarriesPhotosToAnotherPhone() throws {
+        let directory = temporaryDirectory(), other = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+            try? FileManager.default.removeItem(at: other)
+        }
+        let store = ChipPhotoStore(directory: directory)
+        try store.save(sampleImage(), for: "hd-1")
+        try store.save(sampleImage(), for: "hd-2")
+
+        let backup = CollectionBackup(exportedAt: .now, chips: [.init(dealerID: "hd-1", quantity: 1, collectedAt: nil, notes: "")],
+                                      customStores: [])
+        let data = try CollectionExport(backup: backup, photoFiles: store.photoFiles).data()
+        let decoded = try CollectionBackup.decoder.decode(CollectionBackup.self, from: data)
+        #expect(decoded.photos?.count == 2)
+
+        // The other phone already has its own photo of one chip: that one is left alone.
+        let second = ChipPhotoStore(directory: other)
+        try second.save(sampleImage(), for: "hd-2")
+        let revision = second.revision(for: "hd-2")
+        #expect(decoded.restorePhotos(into: second) == 1)
+        #expect(second.hasPhoto(for: "hd-1"))
+        #expect(second.revision(for: "hd-2") == revision)
+
+        // Backups without photos (automatic ones, or from before 1.4) still read.
+        let plain = try CollectionBackup.decoder.decode(CollectionBackup.self, from: CollectionBackup.encoder.encode(backup))
+        #expect(plain.photos == nil)
+        #expect(plain.restorePhotos(into: second) == 0)
+    }
+
     @Test func savesReopensAndRemoves() async throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

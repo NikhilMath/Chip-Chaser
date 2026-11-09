@@ -19,6 +19,7 @@ struct DealerDetailView: View {
     @State private var libraryItem: PhotosPickerItem?
     @State private var showingPhoto = false
     @State private var confirmingRemovePhoto = false
+    @State private var confirmingUnmark = false
 
     init(dealer: Dealer) {
         self.dealer = dealer
@@ -39,7 +40,11 @@ struct DealerDetailView: View {
                 Toggle("Collected", isOn: Binding(
                     get: { collected },
                     set: { newValue in
-                        withAnimation(.snappy) { context.setCollected(newValue, dealerID: dealer.id) }
+                        if newValue {
+                            withAnimation(.snappy) { context.setCollected(true, dealerID: dealer.id) }
+                        } else {
+                            confirmingUnmark = true
+                        }
                     }
                 ))
 
@@ -103,6 +108,9 @@ struct DealerDetailView: View {
             Button("Delete Store", role: .destructive, action: deleteCustomStore)
         } message: {
             Text("This removes the store and its chip from your collection.")
+        }
+        .unmarkConfirmation(isPresented: $confirmingUnmark, dealer: dealer, quantity: quantity) {
+            withAnimation(.snappy) { context.setCollected(false, dealerID: dealer.id) }
         }
         .confirmationDialog("Remove this chip's photo?", isPresented: $confirmingRemovePhoto, titleVisibility: .visible) {
             Button("Remove Photo", role: .destructive) {
@@ -189,7 +197,11 @@ struct DealerDetailView: View {
                     .accessibilityHint("Double-tap to view it full size")
                 } else {
                     Button {
-                        withAnimation(.snappy) { context.setCollected(!collected, dealerID: dealer.id) }
+                        if collected {
+                            confirmingUnmark = true
+                        } else {
+                            withAnimation(.snappy) { context.setCollected(true, dealerID: dealer.id) }
+                        }
                     } label: {
                         ChipIcon(collected: collected, size: 104)
                             .shadow(color: .black.opacity(collected ? 0.25 : 0), radius: 8, y: 4)

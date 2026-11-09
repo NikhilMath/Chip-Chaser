@@ -40,6 +40,11 @@ final class ChipPhotoStore {
 
     var count: Int { revisions.count }
 
+    /// Every photo's file, by dealer ID, for exporting a backup.
+    var photoFiles: [String: URL] {
+        Dictionary(uniqueKeysWithValues: revisions.keys.map { ($0, photoURL(for: $0)) })
+    }
+
     func hasPhoto(for dealerID: String) -> Bool { revisions[dealerID] != nil }
 
     /// Changes whenever the photo for `dealerID` is added, replaced or removed.

@@ -80,3 +80,46 @@ struct DealerTests {
         #expect(names == ["Alabama", "Alaska", "Wyoming", "Alberta"])
     }
 }
+
+/// A downloaded dealer list is only ever used when it can't strand a chip.
+@MainActor
+struct DealerListUpdateTests {
+    private func dealer(_ id: String, closed: String? = nil) -> Dealer {
+        Dealer(id: id, name: "Store \(id)", kind: .dealer, city: "Town", region: "WI", country: "US", closed: closed)
+    }
+
+    private func json(_ ids: [String], generated: String) -> Data {
+        let rows = ids.map { #"{"id": "\#($0)", "name": "Store", "kind": "dealer", "city": "Town", "region": "WI", "country": "US"}"# }
+        return Data(#"{"source": "test", "generated": "\#(generated)", "dealers": [\#(rows.joined(separator: ","))]}"#.utf8)
+    }
+
+    @Test func newerListWithEveryLocationReplacesTheBundledOne() throws {
+        let bundled = DealerDirectory(dealers: [dealer("hd-1"), dealer("hd-2")], generated: "2026-11-08")
+        let folder = URL.temporaryDirectory.appending(path: "dealer-list-\(UUID().uuidString)")
+        let file = folder.appending(path: "dealers.json")
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        #expect(DealerDirectory.newest(bundled: bundled, downloaded: file) === bundled, "no download yet")
+
+        #expect(try DealerListUpdate.save(json(["hd-1", "hd-2", "hd-3"], generated: "2026-12-01"), ifNewerThan: bundled, to: file))
+        let newest = DealerDirectory.newest(bundled: bundled, downloaded: file)
+        #expect(newest.generated == "2026-12-01")
+        #expect(newest.dealer(id: "hd-3") != nil)
+
+        // A later app update bundles an even newer list: the old download is ignored.
+        let updated = DealerDirectory(dealers: [dealer("hd-1"), dealer("hd-2"), dealer("hd-3"), dealer("hd-4")], generated: "2027-01-15")
+        #expect(DealerDirectory.newest(bundled: updated, downloaded: file) === updated)
+    }
+
+    @Test func unsafeListsAreThrownAway() throws {
+        let bundled = DealerDirectory(dealers: [dealer("hd-1"), dealer("hd-2", closed: "2026-10-01")], generated: "2026-11-08")
+        let file = URL.temporaryDirectory.appending(path: "dealer-list-\(UUID().uuidString)/dealers.json")
+
+        // Lost a location (even a closed one), not newer, not a date, or not a dealer list at all.
+        #expect(try !DealerListUpdate.save(json(["hd-1"], generated: "2026-12-01"), ifNewerThan: bundled, to: file))
+        #expect(try !DealerListUpdate.save(json(["hd-1", "hd-2"], generated: "2026-11-08"), ifNewerThan: bundled, to: file))
+        #expect(try !DealerListUpdate.save(json(["hd-1", "hd-2"], generated: "soon"), ifNewerThan: bundled, to: file))
+        #expect(try !DealerListUpdate.save(Data("<html>Not Found</html>".utf8), ifNewerThan: bundled, to: file))
+        #expect(!FileManager.default.fileExists(atPath: file.path(percentEncoded: false)))
+    }
+}

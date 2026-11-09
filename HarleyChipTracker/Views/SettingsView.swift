@@ -50,7 +50,8 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    ShareLink(item: CollectionBackup(records: records, customDealers: customDealers),
+                    ShareLink(item: CollectionExport(backup: CollectionBackup(records: records, customDealers: customDealers),
+                                                     photoFiles: app.photos.photoFiles),
                               preview: SharePreview("Chip Chaser Backup", image: Image(systemName: "doc.text"))) {
                         Label("Export Backup", systemImage: "square.and.arrow.up")
                     }
@@ -67,7 +68,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("Chip Chaser also saves a copy on this iPhone each day you use it, including one from before every update. Export a backup to keep your own copy in Files, or AirDrop it to a phone on a different Apple ID. Chip photos stay on this iPhone and come back with your iPhone's own iCloud Backup.")
+                    Text("Chip Chaser also saves a copy on this iPhone each day you use it, including one from before every update. Export a backup to keep your own copy in Files, or AirDrop it to a phone on a different Apple ID. An exported backup includes your chip photos; iCloud sync and the daily copies don't, so on a second iPhone, import a backup to bring the photos over.")
                 }
 
                 Section {
@@ -82,7 +83,7 @@ struct SettingsView: View {
                     LabeledContent("Locations in List", value: "\(app.directory.dealers.count)")
                     LabeledContent("List Updated", value: app.directory.generatedDisplay)
                     LabeledContent("Version", value: Bundle.main.versionString)
-                    Text("Location data comes from Harley-Davidson's public dealer locator. Chip Chaser is an independent collector's app and is not affiliated with, sponsored by, or endorsed by Harley-Davidson.")
+                    Text("Location data comes from Harley-Davidson's public dealer locator, and the list refreshes itself between app updates. Chip Chaser is an independent collector's app and is not affiliated with, sponsored by, or endorsed by Harley-Davidson.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -116,8 +117,11 @@ struct SettingsView: View {
             let data = try Data(contentsOf: url)
             let backup = try CollectionBackup.decoder.decode(CollectionBackup.self, from: data)
             let restored = try backup.restore(into: context)
-            message = AlertMessage(title: "Backup Imported",
-                                   body: "Restored \(restored) collected chips and \(backup.customStores.count) added stores.")
+            let photos = backup.restorePhotos(into: app.photos)
+            var body = "Restored \(restored) collected chips and \(backup.customStores.count) added stores."
+            if photos > 0 { body += photos == 1 ? " Added 1 chip photo." : " Added \(photos) chip photos." }
+            body += " Nothing you've marked since was changed."
+            message = AlertMessage(title: "Backup Imported", body: body)
         } catch is DecodingError {
             message = AlertMessage(title: "Couldn't Import", body: "That file isn't a Chip Chaser backup.")
         } catch {

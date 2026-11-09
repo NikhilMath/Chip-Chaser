@@ -82,11 +82,16 @@ struct DealerLink: View {
     var distance: CLLocationDistance?
 
     @Environment(\.modelContext) private var context
+    @State private var confirmingUnmark = false
 
     var body: some View {
         NavigationLink(value: dealer) {
-            DealerRow(dealer: dealer, quantity: quantity, distance: distance, onToggle: toggle)
+            // A stray tap on the chip shouldn't cost a collected chip its date and count.
+            DealerRow(dealer: dealer, quantity: quantity, distance: distance) {
+                if quantity > 0 { confirmingUnmark = true } else { toggle() }
+            }
         }
+        .unmarkConfirmation(isPresented: $confirmingUnmark, dealer: dealer, quantity: quantity, action: toggle)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button(action: toggle) {
                 if quantity > 0 {
@@ -123,6 +128,19 @@ struct RegionHeader: View {
             }
             Text("\(collected)/\(total)")
                 .monospacedDigit()
+        }
+    }
+}
+
+extension View {
+    /// Asks before a collected chip is marked missing, which clears its date and count.
+    func unmarkConfirmation(isPresented: Binding<Bool>, dealer: Dealer, quantity: Int, action: @escaping () -> Void) -> some View {
+        confirmationDialog("Mark \(dealer.name) as missing?", isPresented: isPresented, titleVisibility: .visible) {
+            Button("Mark as Missing", role: .destructive, action: action)
+        } message: {
+            Text(quantity > 1
+                 ? "This clears the date you collected it and your count of \(quantity). Notes and its photo are kept."
+                 : "This clears the date you collected it. Notes and its photo are kept.")
         }
     }
 }

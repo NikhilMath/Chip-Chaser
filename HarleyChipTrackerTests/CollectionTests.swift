@@ -1,4 +1,5 @@
 import Foundation
+import MapKit
 import SwiftData
 import Testing
 @testable import HarleyChipTracker
@@ -99,6 +100,70 @@ struct CollectionTests {
         try decoded.restore(into: other.mainContext)
         #expect(try other.mainContext.fetch(FetchDescriptor<CustomDealer>()).count == 1)
         #expect(try other.mainContext.fetch(FetchDescriptor<ChipRecord>()).count == 2)
+    }
+
+    @Test func restoreNeverTakesAnythingAway() throws {
+        let early = Date(timeIntervalSince1970: 1_700_000_000)
+        // When the backup was saved: a note on a chip not yet collected, and one chip owned once.
+        context.ensureChipRecord(for: "hd-1").notes = "ask Bob"
+        context.insert(ChipRecord(dealerID: "hd-2", quantity: 1, collectedAt: early, notes: "red"))
+        context.insert(ChipRecord(dealerID: "hd-3", quantity: 4, collectedAt: early))
+        let backup = CollectionBackup(records: try records(), customDealers: [])
+
+        // Since then: the first chip was collected, the second gained extras and a new note,
+        // and the third was traded down to one.
+        context.setCollected(true, dealerID: "hd-1")
+        let second = try #require(context.chipRecord(for: "hd-2"))
+        second.quantity = 3
+        second.notes = "red, two from Sturgis"
+        try #require(context.chipRecord(for: "hd-3")).quantity = 1
+
+        try backup.restore(into: context)
+
+        let first = try #require(context.chipRecord(for: "hd-1"))
+        #expect(first.quantity == 1, "a chip collected since the backup stays collected")
+        #expect(first.collectedAt != nil)
+        #expect(first.notes == "ask Bob")
+        #expect(second.quantity == 3)
+        #expect(second.collectedAt == early)
+        #expect(second.notes == "red, two from Sturgis", "a note that already holds the old one isn't doubled")
+        #expect(try #require(context.chipRecord(for: "hd-3")).quantity == 4, "restoring puts chips back")
+
+        // Different notes are both kept.
+        second.notes = "blue"
+        try backup.restore(into: context)
+        #expect(second.notes == "blue\nred")
+    }
+
+    @Test func mapGroupsOnlyPinsThatWouldOverlap() {
+        func dealer(_ id: String, _ latitude: Double, _ longitude: Double) -> Dealer {
+            Dealer(id: id, name: id, kind: .dealer, city: "Town", region: "WI", country: "US", latitude: latitude, longitude: longitude)
+        }
+        let dealers = [dealer("a", 43.00, -88.00), dealer("b", 43.02, -88.01), dealer("c", 44.5, -89.5), dealer("far", 30, -100)]
+        let status = CollectionStatus(quantities: ["a": 1])
+        let size = CGSize(width: 400, height: 800)
+        func region(_ span: Double) -> MKCoordinateRegion {
+            MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 43.5, longitude: -88.5),
+                               span: MKCoordinateSpan(latitudeDelta: span * 2, longitudeDelta: span))
+        }
+
+        // Zoomed out: the two neighbours share a mark, the third stands alone, and the one off screen isn't drawn.
+        let wide = MapCluster.make(dealers, status: status, in: region(6), mapSize: size)
+        #expect(wide.count == 2)
+        let pair = wide.first { $0.dealers.count == 2 }
+        #expect(pair?.dealers.map(\.id) == ["a", "b"])
+        #expect(pair?.collected == 1)
+        #expect(wide.contains { $0.single?.id == "c" })
+
+        // The selected location always keeps its own pin.
+        #expect(MapCluster.make(dealers, status: status, in: region(6), mapSize: size, keepSeparate: "a").count == 3)
+
+        // Zoomed in on the pair, both show.
+        let close = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 43.01, longitude: -88.005),
+                                       span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.05))
+        #expect(MapCluster.make(dealers, status: status, in: close, mapSize: size).compactMap(\.single?.id).sorted() == ["a", "b"])
+        // Tapping a group zooms to a region that holds all of it.
+        #expect((pair?.region.span.latitudeDelta ?? 0) >= 0.02)
     }
 
     @Test func mergeFoldsSyncedDuplicates() throws {

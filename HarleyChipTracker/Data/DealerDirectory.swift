@@ -5,7 +5,8 @@ import Foundation
 /// Collectors' chips are keyed by these IDs, so the list only ever grows: a location that
 /// leaves the locator stays in the file marked `closed` (see `Tools/update_dealers.py`).
 nonisolated final class DealerDirectory: Sendable {
-    static let shared = DealerDirectory()
+    /// The list the app uses: the bundled one, or a newer one downloaded since (`DealerListUpdate`).
+    static let shared = DealerDirectory.newest()
 
     /// Locations that are open now: the chips still out there to collect.
     let dealers: [Dealer]
@@ -55,6 +56,27 @@ nonisolated final class DealerDirectory: Sendable {
         self.generated = generated
         self.source = source
         self.byID = Dictionary(dealers.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Reads a `dealers.json` file's contents. Nil when it isn't one.
+    convenience init?(data: Data) {
+        guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else { return nil }
+        self.init(dealers: payload.dealers, generated: payload.generated, source: payload.source)
+    }
+
+    /// The bundled list, unless the downloaded one at `url` is newer and safe to use instead.
+    static func newest(bundled: DealerDirectory = DealerDirectory(), downloaded url: URL = DealerListUpdate.fileURL) -> DealerDirectory {
+        guard let data = try? Data(contentsOf: url), let update = DealerDirectory(data: data),
+              update.canReplace(bundled) else { return bundled }
+        return update
+    }
+
+    /// Whether this list can stand in for `other`: it's newer, and it still has every location
+    /// `other` has. Chips are keyed by these IDs, so a list that lost one is never used.
+    func canReplace(_ other: DealerDirectory) -> Bool {
+        let isDate = generated.wholeMatch(of: /\d{4}-\d{2}-\d{2}/) != nil
+        return isDate && generated > other.generated && !dealers.isEmpty
+            && other.byID.keys.allSatisfy { byID[$0] != nil }
     }
 
     /// Any bundled location, open or closed.

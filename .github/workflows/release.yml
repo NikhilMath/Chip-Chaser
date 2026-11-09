@@ -1,4 +1,4 @@
-# Builds the app and uploads it to App Store Connect (TestFlight) whenever a
+# Tests the app, builds it and uploads it to App Store Connect (TestFlight) whenever a
 # push to main changes the app, then tags the commit v<version>-build<N> and
 # publishes a GitHub Release. Run it by hand from the Actions tab too.
 #
@@ -61,6 +61,21 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$key"
           chmod 600 "$key"
           echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+
+      # A build that fails a test (above all the upgrade-safety ones) never reaches TestFlight.
+      - name: Run the tests
+        if: env.HAS_KEY == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          simulator=$(xcrun simctl list devices available | grep -m1 -E '^ +iPhone' | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}')
+          [ -n "$simulator" ] || { echo "::error::No iPhone simulator on this runner."; exit 1; }
+          # Signed like a local build: without the iCloud entitlement the app can't launch to host the tests.
+          xcodebuild test -project HarleyChipTracker.xcodeproj -scheme HarleyChipTracker \
+            -destination "platform=iOS Simulator,id=$simulator" -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" -quiet
 
       - name: Archive build ${{ steps.build.outputs.number }}
         if: env.HAS_KEY == 'true'
