@@ -18,8 +18,8 @@ where the next push ships what it should. After every app change:
 4. **Check the run** with `gh run list --repo NikhilMath/Chip-Chaser --workflow release.yml`.
    If it failed, fix it and push again. If the submit step says it didn't submit, tell the
    user why in one line:
-   - another version is still with Apple: run the workflow again once that version is live
-     (`gh workflow run release.yml --repo NikhilMath/Chip-Chaser`);
+   - another version is still with Apple: nothing to do. The daily "Submit waiting version"
+     workflow (`submit-waiting.yml`) submits it once that version is live;
    - Apple rejected a version: the user has to read why in App Store Connect.
 5. **Screens changed?** Retake the App Store screenshots in `docs/appstore/` (Tools/capture_screenshots.sh)
    and remind the user to upload them in App Store Connect; the workflow can't do that part.

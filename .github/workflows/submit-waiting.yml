@@ -1,0 +1,61 @@
+# Submits the newest uploaded build of the current version for App Review, without building
+# anything. It covers the cases where the release workflow uploaded a build but couldn't
+# submit it:
+#   - another version was still with Apple (it checks again every day until that one is live);
+#   - the What's New file was pushed after the build (that push doesn't start a release).
+# Tools/submit-for-review.rb decides; when there's nothing to do it says why and exits 0,
+# so running it every day is harmless.
+name: Submit waiting version
+
+on:
+  schedule:
+    - cron: '0 15 * * *' # daily, mid-morning in the US
+  push:
+    branches: [main]
+    paths:
+      - 'docs/appstore/whats-new/**'
+  workflow_dispatch:
+
+# Shares the release workflow's queue, so the two never submit at the same time.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HAS_KEY: ${{ secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8 != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # release tags say which builds were uploaded
+
+      - name: Find the newest uploaded build of this version
+        id: build
+        run: |
+          version=$(grep -m1 -o 'MARKETING_VERSION = [0-9.]*' HarleyChipTracker.xcodeproj/project.pbxproj | grep -o '[0-9.]*$')
+          number=$(git tag -l "v$version-build*" | sed 's/.*-build//' | grep -E '^[0-9]+$' | sort -n | tail -1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          if [ -z "$number" ]; then
+            echo "::notice title=App Review::No build of $version has been uploaded yet; the release workflow submits it when it uploads one."
+          fi
+
+      - name: Submit for App Review
+        if: env.HAS_KEY == 'true' && steps.build.outputs.number != ''
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$key"
+          chmod 600 "$key"
+          trap 'rm -f "$key"' EXIT
+          ruby Tools/submit-for-review.rb --self-test
+          ASC_KEY_PATH="$key" ruby Tools/submit-for-review.rb "${{ steps.build.outputs.version }}" "${{ steps.build.outputs.number }}"
