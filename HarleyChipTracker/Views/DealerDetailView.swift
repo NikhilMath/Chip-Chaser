@@ -123,14 +123,13 @@ struct DealerDetailView: View {
             Text("The chip stays in your collection.")
         }
         .fullScreenCover(isPresented: $showingCamera) {
-            CameraPicker(allowsEditing: true) { image in
+            ChipCamera { image in
                 guard let upright = ChipRecognizer.normalized(image) else {
                     photoProblem = AlertMessage(title: "Couldn't Use That Photo", body: "Try taking it again.")
                     return
                 }
                 savePhoto(UIImage(cgImage: upright))
             }
-            .ignoresSafeArea()
         }
         .photosPicker(isPresented: $showingLibrary, selection: $libraryItem, matching: .images)
         .onChange(of: libraryItem) { _, item in
@@ -147,7 +146,7 @@ struct DealerDetailView: View {
     /// Add, retake or remove the photo of the collector's chip.
     private var photoMenu: some View {
         Menu {
-            if CameraPicker.isAvailable {
+            if ChipCamera.isAvailable {
                 Button {
                     showingCamera = true
                 } label: {

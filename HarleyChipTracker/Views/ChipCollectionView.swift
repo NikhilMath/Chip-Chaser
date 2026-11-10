@@ -66,13 +66,6 @@ struct ChipCollectionView: View {
                         Label("Sort", systemImage: "arrow.up.arrow.down")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        scanning = true
-                    } label: {
-                        Label("Add from Photo", systemImage: "camera.viewfinder")
-                    }
-                }
             }
             .navigationDestination(for: Dealer.self) { dealer in
                 DealerDetailView(dealer: dealer)
@@ -95,7 +88,7 @@ struct ChipCollectionView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
-            if photoCount == 0 && searchText.isEmpty {
+            if searchText.isEmpty {
                 photoTip.padding(.horizontal)
             }
 

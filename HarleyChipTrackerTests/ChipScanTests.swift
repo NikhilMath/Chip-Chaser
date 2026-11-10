@@ -382,3 +382,31 @@ enum ChipArt {
         return UIGraphicsImageRenderer(size: size, format: format).image(actions: draw).cgImage
     }
 }
+
+/// The round camera crops the photo to the circle the collector lined the chip up in.
+@MainActor
+struct ChipCameraCropTests {
+    @Test func cropMatchesTheCircleOnScreen() throws {
+        // A 3024×4032 portrait photo aspect-filled into a 402×874 screen.
+        let view = CGSize(width: 402, height: 874)
+        let image = CGSize(width: 3024, height: 4032)
+        let circle = ChipCamera.circle(in: view)
+        let rect = try #require(ChipCamera.cropRect(imageSize: image, circle: circle, viewSize: view))
+
+        #expect(abs(rect.width - rect.height) <= 2, "a square around the circle")
+        #expect(abs(rect.midX - image.width / 2) <= 2, "centered left to right")
+        // The circle sits a little above the middle of the screen, and so of the photo.
+        let scale = max(view.width / image.width, view.height / image.height)
+        let offsetY = (view.height - image.height * scale) / 2
+        #expect(abs(rect.midY - (circle.midY - offsetY) / scale) <= 2)
+        #expect(CGRect(origin: .zero, size: image).contains(rect))
+    }
+
+    @Test func cropStaysInsideThePhoto() throws {
+        let view = CGSize(width: 400, height: 400)
+        let image = CGSize(width: 1000, height: 1000)
+        let huge = CGRect(x: -50, y: -50, width: 500, height: 500)
+        let rect = try #require(ChipCamera.cropRect(imageSize: image, circle: huge, viewSize: view))
+        #expect(rect == CGRect(origin: .zero, size: image))
+    }
+}

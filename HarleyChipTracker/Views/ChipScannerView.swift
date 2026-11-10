@@ -56,10 +56,9 @@ struct ChipScannerView: View {
             }
         }
         .fullScreenCover(isPresented: $showingCamera) {
-            CameraPicker { image in
+            ChipCamera { image in
                 Task { await readCameraPhoto(image) }
             }
-            .ignoresSafeArea()
         }
         .onChange(of: libraryItem) { _, item in
             guard let item else { return }
@@ -114,7 +113,7 @@ struct ChipScannerView: View {
                         .foregroundStyle(.secondary)
                 }
                 VStack(spacing: 12) {
-                    if CameraPicker.isAvailable {
+                    if ChipCamera.isAvailable {
                         Button {
                             showingCamera = true
                         } label: {
@@ -135,7 +134,7 @@ struct ChipScannerView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Good light, no glare on the face", systemImage: "sun.max")
                     Label("Chips face up, with the dealer's name showing", systemImage: "circle.grid.2x2")
-                    Label("Get close: fill the frame with the chips", systemImage: "arrow.up.left.and.arrow.down.right")
+                    Label("Line the chip up inside the circle", systemImage: "circle.dashed")
                     Label("The photo stays on your iPhone", systemImage: "lock")
                 }
                 .font(.subheadline)
