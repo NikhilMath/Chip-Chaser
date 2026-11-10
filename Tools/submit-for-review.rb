@@ -49,7 +49,7 @@ def decide(versions, version)
   end
   if waiting
     return [:skip, "Version #{waiting[:version]} is still with Apple (#{waiting[:state]}), and only one version can be. " \
-                   "Run the workflow again once it's released to submit #{version}."]
+                   "The daily Submit waiting version check sends #{version} once it's released."]
   end
   draft = versions.find { |v| EDITABLE.include?(v[:state]) }
   draft ? [:use, draft[:id], draft[:version] != version] : [:create]
