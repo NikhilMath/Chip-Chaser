@@ -142,6 +142,28 @@ def self_test
   puts 'Self-test passed.'
 end
 
+# In-app purchases (the tip jar) that are filled in but not yet sent go to review with this
+# version: Apple reviews an app's first purchases only together with an app version.
+# One that's missing details (price, screenshot) is skipped and named, never blocking the app.
+def submit_ready_in_app_purchases(connect, app_id)
+  purchases = connect.get("/v1/apps/#{app_id}/inAppPurchasesV2?limit=50")['data']
+  purchases.each do |purchase|
+    name = "#{purchase['attributes']['name']} (#{purchase['attributes']['productId']})"
+    case purchase['attributes']['state']
+    when 'READY_TO_SUBMIT'
+      connect.post('/v1/inAppPurchaseSubmissions', { data: {
+        type: 'inAppPurchaseSubmissions',
+        relationships: { inAppPurchaseV2: { data: { type: 'inAppPurchases', id: purchase['id'] } } }
+      } }, [409])
+      puts "Sending in-app purchase #{name} with this version."
+    when 'MISSING_METADATA'
+      notice("In-app purchase #{name} is missing details in App Store Connect, so it wasn't sent.")
+    end
+  end
+rescue Connect::Failed => error
+  notice("Couldn't send in-app purchases: #{error.message}")
+end
+
 def main(version, build)
   notes_file = File.expand_path("../docs/appstore/whats-new/#{version}.txt", __dir__)
   unless File.exist?(notes_file)
@@ -198,6 +220,8 @@ def main(version, build)
     } })
   end
   puts "Attached build #{build} and filled in What's New."
+
+  submit_ready_in_app_purchases(connect, app_id)
 
   open = connect.get("/v1/reviewSubmissions?filter[app]=#{app_id}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW")['data'].first
   submission_id = open ? open['id'] : connect.post('/v1/reviewSubmissions', { data: {

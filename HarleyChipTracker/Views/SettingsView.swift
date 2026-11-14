@@ -73,6 +73,8 @@ struct SettingsView: View {
                     Text("Chip Chaser also saves a copy on this iPhone each day you use it, including one from before every update. Export a backup to keep your own copy in Files, or AirDrop it to a phone on a different Apple ID. An exported backup includes your chip photos; iCloud sync and the daily copies don't, so on a second iPhone, import a backup to bring the photos over.")
                 }
 
+                TipJarSection()
+
                 Section {
                     Button(role: .destructive) {
                         confirmingReset = true
@@ -188,5 +190,6 @@ extension Bundle {
     SettingsView()
         .environment(AppModel())
         .environment(CloudAccount())
+        .environment(TipJar())
         .modelContainer(.preview)
 }

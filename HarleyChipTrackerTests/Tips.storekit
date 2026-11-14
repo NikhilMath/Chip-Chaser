@@ -1,0 +1,78 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "C1A0F1E2",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "C1A0F1E3",
+      "localizations" : [
+        {
+          "description" : "Buy the developer a coffee.",
+          "displayName" : "Coffee Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nikhilmath.HarleyChipTracker.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "C1A0F1E4",
+      "localizations" : [
+        {
+          "description" : "Fill up the tank for the next dealer run.",
+          "displayName" : "Gas Money Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nikhilmath.HarleyChipTracker.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "C1A0F1E5",
+      "localizations" : [
+        {
+          "description" : "For the full road trip.",
+          "displayName" : "Road Trip Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nikhilmath.HarleyChipTracker.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

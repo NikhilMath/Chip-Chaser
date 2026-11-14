@@ -5,6 +5,7 @@ import SwiftUI
 struct HarleyChipTrackerApp: App {
     @State private var model: AppModel
     @State private var cloudAccount = CloudAccount()
+    @State private var tipJar = TipJar()
     private let container: ModelContainer
 
     init() {
@@ -17,11 +18,13 @@ struct HarleyChipTrackerApp: App {
             RootView()
                 .environment(model)
                 .environment(cloudAccount)
+                .environment(tipJar)
                 .cloudSyncMaintenance(account: cloudAccount)
                 .automaticBackups(enabled: !Self.usesDemoData)
                 .task {
                     if !Self.usesDemoData { await DealerListUpdate.refreshIfDue() }
                 }
+                .task { await tipJar.start() }
         }
         .modelContainer(container)
     }

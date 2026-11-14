@@ -46,5 +46,6 @@ enum AppTab: String {
     RootView()
         .environment(AppModel())
         .environment(CloudAccount())
+        .environment(TipJar())
         .modelContainer(.preview)
 }
